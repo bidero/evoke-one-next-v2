@@ -1,0 +1,143 @@
+<?php if (!defined('ABSPATH')) exit;
+/**
+ * Evoke ONE — Admin: Logi 404
+ */
+
+// Obsługa formularza
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['evk_404_save'])
+    && check_admin_referer('evk_404_save_action')) {
+    update_option('evk_404_enabled',   !empty($_POST['evk_404_enabled'])   ? 1 : 0);
+    update_option('evk_404_max_logs',  max(10, absint($_POST['evk_404_max_logs']  ?? 200)));
+    update_option('evk_404_skip_bots', !empty($_POST['evk_404_skip_bots']) ? 1 : 0);
+    update_option('evk_404_bot_list',  sanitize_textarea_field($_POST['evk_404_bot_list'] ?? ''));
+    echo '<div class="updated notice is-dismissible"><p>Zapisano.</p></div>';
+}
+
+$enabled   = evk_404_is_enabled();
+$max_logs  = evk_404_max_logs();
+$skip_bots = evk_404_skip_bots();
+$bot_list  = implode("\n", evk_404_bot_list());
+$nonce_ajax = wp_create_nonce('evk_tools_nonce');
+?>
+
+<!-- Status card -->
+<div class="evo-status-card">
+    <div class="evo-status-icon <?php echo $enabled ? 'on' : 'off'; ?>">
+        <span class="dashicons dashicons-warning" style="font-size:24px;width:24px;height:24px;line-height:1;"></span>
+    </div>
+    <div class="evo-status-text">
+        <h3>Logi 404: <?php echo $enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'; ?></h3>
+        <p>Rejestruje nieistniejące adresy URL z datą, IP i referrerem.</p>
+    </div>
+    <div class="evo-status-actions">
+        <form method="post" style="display:contents;">
+            <?php wp_nonce_field('evk_404_save_action'); ?>
+            <input type="hidden" name="evk_404_save" value="1">
+            <input type="hidden" name="evk_404_enabled" data-option="evk_404_enabled" data-field="_scalar" value="<?php echo $enabled ? '0' : '1'; ?>">
+            <input type="hidden" name="evk_404_max_logs" value="<?php echo esc_attr($max_logs); ?>">
+            <input type="hidden" name="evk_404_skip_bots" data-option="evk_404_skip_bots" data-field="_scalar" value="<?php echo $skip_bots ? '1' : '0'; ?>">
+            <label class="evo-toggle">
+                <input type="checkbox" <?php checked($enabled); ?> onchange="this.form.elements['evk_404_enabled'].value=this.checked?'1':'0';this.form.submit()">
+                <span class="evo-slider"></span>
+            </label>
+        </form>
+    </div>
+</div>
+
+<!-- Ustawienia -->
+<form method="post" style="margin-top:20px;">
+    <?php wp_nonce_field('evk_404_save_action'); ?>
+    <input type="hidden" name="evk_404_save" value="1">
+
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+        <div class="evo-field" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <label style="white-space:nowrap;margin:0;font-weight:500;">Maks. logów:</label>
+            <input type="number" name="evk_404_max_logs" value="<?php echo esc_attr($max_logs); ?>" min="10" max="5000" style="width:90px;">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" name="evk_404_skip_bots" value="1" <?php checked($skip_bots); ?>>
+            Ignoruj boty / roboty
+        </label>
+    </div>
+
+    <?php if ($skip_bots): ?>
+    <div class="evo-field">
+        <label>Lista botów (jeden per linia)</label>
+        <textarea name="evk_404_bot_list" rows="4" style="width:100%;font-family:monospace;font-size:12px;"><?php echo esc_textarea($bot_list); ?></textarea>
+    </div>
+    <?php endif; ?>
+
+    <div class="evo-save-bar" style="display:flex;gap:12px;align-items:center;margin-top:16px;">
+        <?php submit_button('Zapisz ustawienia', 'secondary', 'evk_404_save', false); ?>
+        <button type="button" class="button" id="evk-clear-404" data-nonce="<?php echo esc_attr($nonce_ajax); ?>">🗑 Wyczyść wszystkie logi</button>
+        <span id="evk-clear-404-msg" style="font-size:13px;color:#059669;display:none;">Wyczyszczono.</span>
+    </div>
+</form>
+
+<?php
+$logs = get_posts([
+    'post_type'      => 'evk_404_log',
+    'posts_per_page' => $max_logs,
+    'orderby'        => 'date',
+    'order'          => 'DESC',
+    'post_status'    => 'publish',
+]);
+if (!empty($logs)):
+?>
+<hr class="evo-divider" style="margin-top:40px;">
+<p class="evo-section-title">Zarejestrowane błędy 404 <span style="font-weight:400;color:#6b7280;">(<?php echo count($logs); ?>)</span></p>
+<div style="overflow-x:auto;">
+<table class="wp-list-table widefat striped" style="font-size:12px;">
+    <thead><tr>
+        <th style="width:140px;">Czas</th>
+        <th>URL</th>
+        <th>Referrer</th>
+        <th style="width:110px;">IP</th>
+        <th>User Agent</th>
+    </tr></thead>
+    <tbody>
+    <?php foreach ($logs as $log):
+        $m = get_post_meta($log->ID);
+    ?>
+    <tr>
+        <td style="white-space:nowrap;"><?php echo esc_html($m['logged_at'][0] ?? ''); ?></td>
+        <td><code style="font-size:11px;word-break:break-all;"><?php echo esc_html($m['url'][0] ?? ''); ?></code></td>
+        <td style="font-size:11px;color:#6b7280;"><?php echo esc_html($m['referrer'][0] ?? '—'); ?></td>
+        <td>
+            <a href="https://radar.cloudflare.com/ip/<?php echo esc_attr($m['ip'][0] ?? ''); ?>" target="_blank" style="font-size:11px;">
+                <?php echo esc_html($m['ip'][0] ?? '—'); ?>
+            </a>
+        </td>
+        <td style="font-size:11px;color:#6b7280;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            title="<?php echo esc_attr($m['ua'][0] ?? ''); ?>">
+            <?php echo esc_html($m['ua'][0] ?? '—'); ?>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
+</div>
+<?php elseif ($enabled): ?>
+<div class="evo-info-box" style="margin-top:20px;">
+    <span class="dashicons dashicons-yes-alt"></span>
+    <div>Brak zarejestrowanych błędów 404. Pojawią się tutaj gdy ktoś wejdzie na nieistniejący URL.</div>
+</div>
+<?php endif; ?>
+
+<script>
+(function($){
+    $('#evk-clear-404').on('click', function(){
+        if (!confirm('Wyczyścić wszystkie logi 404?')) return;
+        var btn = $(this).prop('disabled', true).text('...');
+        $.post(ajaxurl, {action:'evk_clear_404_logs', nonce:$(this).data('nonce')}, function(r){
+            if (r.success){
+                $('table.wp-list-table tbody').empty();
+                $('#evk-clear-404-msg').show();
+                $('table.wp-list-table').closest('div').hide();
+                $('.evo-divider').hide();
+                $('p.evo-section-title').last().hide();
+            }
+        }).always(function(){ btn.prop('disabled', false).text('🗑 Wyczyść wszystkie logi'); });
+    });
+})(jQuery);
+</script>

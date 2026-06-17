@@ -1,0 +1,195 @@
+<?php
+if (!defined('ABSPATH')) exit;
+
+
+// =========================================================================
+// CPT — rejestracja
+// =========================================================================
+
+add_action('init', function () {
+    register_post_type('evk_code_snippet', [
+        'public'             => false,
+        'publicly_queryable' => false,
+        'show_ui'            => false,
+        'show_in_menu'       => false,
+        'query_var'          => false,
+        'rewrite'            => false,
+        'capability_type'    => 'post',
+        'map_meta_cap'       => true,
+        'hierarchical'       => false,
+        'supports'           => ['title', 'editor', 'revisions'],
+        'has_archive'        => false,
+        'show_in_rest'       => false,
+    ]);
+});
+
+// =========================================================================
+// HELPERS — zapis i odczyt snippetów
+// =========================================================================
+
+function evk_snippet_get(string $slug): string {
+    // Cache per-request
+    static $cache = [];
+    if (isset($cache[$slug])) return $cache[$slug];
+
+    $posts = get_posts([
+        'post_type'        => 'evk_code_snippet',
+        'name'             => $slug,
+        'posts_per_page'   => 1,
+        'post_status'      => 'private',
+        'suppress_filters' => true,
+    ]);
+    $cache[$slug] = !empty($posts) ? $posts[0]->post_content : '';
+    return $cache[$slug];
+}
+
+function evk_snippet_get_id(string $slug): int {
+    $posts = get_posts([
+        'post_type'        => 'evk_code_snippet',
+        'name'             => $slug,
+        'posts_per_page'   => 1,
+        'post_status'      => 'private',
+        'fields'           => 'ids',
+        'suppress_filters' => true,
+    ]);
+    return !empty($posts) ? (int) $posts[0] : 0;
+}
+
+function evk_snippet_save(string $slug, string $title, string $content): void {
+    $id = evk_snippet_get_id($slug);
+    $data = [
+        'post_title'   => $title,
+        'post_content' => $content,
+        'post_status'  => 'private',
+        'post_type'    => 'evk_code_snippet',
+        'post_name'    => $slug,
+    ];
+    if ($id) {
+        $data['ID'] = $id;
+        wp_update_post($data);
+    } else {
+        wp_insert_post($data);
+    }
+}
+
+function evk_snippets_advanced_get(): string {
+    global $wpdb;
+    $val = $wpdb->get_var($wpdb->prepare(
+        "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+        EVK_SNIPPETS_ADVANCED_CONTENT
+    ));
+    return is_string($val) ? $val : '';
+}
+
+function evk_snippets_advanced_save(string $code): void {
+    global $wpdb;
+    $wpdb->replace(
+        $wpdb->options,
+        ['option_name' => EVK_SNIPPETS_ADVANCED_CONTENT, 'option_value' => $code, 'autoload' => 'no'],
+        ['%s', '%s', '%s']
+    );
+}
+
+// =========================================================================
+// INICJALIZACJA WYKONYWANIA
+// =========================================================================
+
+add_action('init', function () {
+    if (defined('EVK_CODE_DISABLE') && EVK_CODE_DISABLE) return;
+    if (!get_option(EVK_SNIPPETS_ENABLED_OPTION, 0)) return;
+
+    // functions.php style — natychmiast
+    $code = evk_snippet_get('evk-snippet-functions-php');
+    if (!empty(trim($code))) evk_snippet_execute($code, 'evk-snippet-functions-php');
+
+    // Advanced — natychmiast
+    if (get_option(EVK_SNIPPETS_ADVANCED_ENABLED, 0)) {
+        $adv = evk_snippets_advanced_get();
+        if (!empty(trim($adv))) evk_snippet_execute($adv, 'evk-snippet-advanced');
+    }
+
+    // Frontend hooks
+    if (!empty(trim(evk_snippet_get('evk-snippet-frontend-head')))) {
+        add_action('wp_head', function () {
+            echo evk_snippet_execute(evk_snippet_get('evk-snippet-frontend-head'), 'evk-snippet-frontend-head');
+        }, 1);
+    }
+    if (!empty(trim(evk_snippet_get('evk-snippet-footer')))) {
+        add_action('wp_footer', function () {
+            echo evk_snippet_execute(evk_snippet_get('evk-snippet-footer'), 'evk-snippet-footer');
+        }, 9999);
+    }
+    if (is_admin() && !empty(trim(evk_snippet_get('evk-snippet-admin-head')))) {
+        add_action('admin_head', function () {
+            echo evk_snippet_execute(evk_snippet_get('evk-snippet-admin-head'), 'evk-snippet-admin-head');
+        }, 1);
+    }
+}, 10);
+
+// =========================================================================
+// SHUTDOWN HANDLER — przechwytuje fatalne błędy
+// =========================================================================
+
+add_action('init', function () {
+    register_shutdown_function(function () {
+        $error = error_get_last();
+        if (!$error) return;
+        if (!in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) return;
+        if (!get_option(EVK_SNIPPETS_ENABLED_OPTION, 0)) return;
+
+        $is_snippet = strpos($error['message'], "eval()'d code") !== false
+            || strpos($error['message'], 'evk_snippet') !== false
+            || strpos(wp_normalize_path($error['file']), wp_normalize_path(__FILE__)) !== false;
+
+        if (!$is_snippet) return;
+
+        evk_snippet_log_error('PHP Fatal Error', $error['message'], 'unknown', $error['line']);
+        update_option(EVK_SNIPPETS_ENABLED_OPTION, 0);
+        set_transient(EVK_SNIPPETS_FATAL_TRANSIENT, [
+            'message' => $error['message'],
+            'slug'    => 'fatal',
+            'line'    => $error['line'],
+            'type'    => 'Fatal Error',
+        ], DAY_IN_SECONDS);
+    });
+}, 1);
+
+// =========================================================================
+// ADMIN NOTICE — fatal error
+// =========================================================================
+
+add_action('admin_notices', function () {
+    if (!current_user_can('manage_options')) return;
+    $fatal = get_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
+    if (!$fatal || !is_array($fatal)) return;
+    $url = admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets&evk_stab=logs');
+    echo '<div class="notice notice-error evk-snippets-fatal-notice">';
+    echo '<p><strong>Evoke One Snippety: wykonywanie wyłączone z powodu błędu krytycznego.</strong></p>';
+    printf('<p>%s — linia %d</p>', esc_html($fatal['message']), (int)$fatal['line']);
+    printf('<p><a href="%s" class="button">Zobacz logi błędów</a> &nbsp;', esc_url($url));
+    echo '<button type="button" class="button evk-dismiss-fatal-snippet" data-nonce="' . esc_attr(wp_create_nonce('evk_dismiss_fatal')) . '">Odrzuć</button></p>';
+    echo '</div>';
+    echo '<script>(function($){$(".evk-dismiss-fatal-snippet").on("click",function(){$.post(ajaxurl,{action:"evk_dismiss_snippet_fatal",nonce:$(this).data("nonce")},function(){$(".evk-snippets-fatal-notice").remove();});});})($j||jQuery);</script>';
+});
+
+add_action('wp_ajax_evk_dismiss_snippet_fatal', function () {
+    check_ajax_referer('evk_dismiss_fatal', 'nonce');
+    if (!current_user_can('manage_options')) wp_die();
+    delete_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
+    wp_send_json_success();
+});
+
+// =========================================================================
+// AJAX — pobierz treść rewizji do podglądu
+// =========================================================================
+
+add_action('wp_ajax_evk_get_snippet_revision', function () {
+    check_ajax_referer('evk_snippets_nonce', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error([], 403);
+    $rev_id = absint($_POST['revision_id'] ?? 0);
+    if (!$rev_id) wp_send_json_error('Brak ID rewizji.');
+    $rev = wp_get_post_revision($rev_id);
+    if (!$rev) wp_send_json_error('Rewizja nie istnieje.');
+    if (!current_user_can('edit_post', $rev->post_parent)) wp_send_json_error('Brak uprawnień.', 403);
+    wp_send_json_success(['content' => $rev->post_content]);
+});
