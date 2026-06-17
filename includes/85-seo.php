@@ -81,7 +81,7 @@ add_action('wp_head', function () {
     echo '<meta property="og:url" content="' . esc_url(get_permalink($pid)) . '">' . "\n";
     if ($desc) echo '<meta property="og:description" content="' . esc_attr($desc) . '">' . "\n";
 
-    if (function_exists('evk_og_get_url')) {
+    if (function_exists('evk_og_get_url') && !empty(evk_og_get_settings()['enabled'])) {
         $img = evk_og_get_url($pid);
         if ($img) echo '<meta property="og:image" content="' . esc_url($img) . '">' . "\n";
     }

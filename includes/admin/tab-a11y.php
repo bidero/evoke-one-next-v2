@@ -139,6 +139,19 @@ if (!defined('ABSPATH')) exit;
                     </div>
                 </div>
 
+                <!-- WYKLUCZONE STRONY -->
+                <hr class="evo-divider">
+                <p class="evo-section-title">Wykluczenia stron</p>
+                <div class="evo-info-box">
+                    <span class="dashicons dashicons-info"></span>
+                    <div>Strony, na których widget dostępności <strong>nie zostanie załadowany</strong>. Wpisz jedną ścieżkę URL na linię (np. <code>/kontakt</code>, <code>/koszyk</code>, <code>/en/</code>). Dopasowanie częściowe — <code>/konto</code> wyklucza <code>/konto</code>, <code>/konto/zamowienia</code> itd.</div>
+                </div>
+                <div class="evo-field" style="margin-bottom:24px;">
+                    <label>Wykluczone ścieżki URL</label>
+                    <textarea name="evk_a11y[exclude_urls]" rows="5" style="max-width:480px;font-family:monospace;font-size:12px;" placeholder="/kontakt&#10;/koszyk&#10;/konto"><?php echo esc_textarea($a11y['exclude_urls'] ?? ''); ?></textarea>
+                    <div class="evo-desc">Jedna ścieżka na linię. Dopasowanie do <code>$_SERVER['REQUEST_URI']</code>.</div>
+                </div>
+
                 <!-- WYKLUCZENIA CSS -->
                 <hr class="evo-divider">
                 <p class="evo-section-title">Wykluczenia z filtrów CSS</p>

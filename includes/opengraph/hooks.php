@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) exit;
 add_action('save_post', function ($post_id) {
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
 
+    $og_settings = evk_og_get_settings();
+    if (empty($og_settings['enabled'])) return;
+
     // Obsługa meta box
     if (isset($_POST['_evk_og_nonce']) && wp_verify_nonce($_POST['_evk_og_nonce'], 'evk_og_meta')) {
         update_post_meta($post_id, '_evk_og_disable', !empty($_POST['evk_og_disable']) ? '1' : '0');
@@ -24,7 +27,10 @@ add_action('added_post_meta',   'evk_og_on_thumbnail_change', 10, 4);
 
 function evk_og_on_thumbnail_change($meta_id, $post_id, $meta_key, $meta_value): void {
     if ($meta_key === '_thumbnail_id') {
-        evk_og_create((int)$post_id, true);
+        $og_settings = evk_og_get_settings();
+        if (!empty($og_settings['enabled'])) {
+            evk_og_create((int)$post_id, true);
+        }
     }
 }
 

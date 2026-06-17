@@ -59,6 +59,9 @@ function evk_a11y_defaults(): array {
 
         // Wykluczenia z filtrów saturacji/kolorów (osobna lista)
         'saturation_exclusions' => "#snn-accessibility-widget-container",
+
+        // Wykluczone strony — jedna ścieżka URL na linię (np. /kontakt, /en/)
+        'exclude_urls' => '',
     ];
 }
 
@@ -119,6 +122,9 @@ function evk_a11y_sanitize($input): array {
     $clean['filter_exclusions']    = sanitize_textarea_field($input['filter_exclusions']    ?? $defaults['filter_exclusions']);
     $clean['contrast_exclusions']  = sanitize_textarea_field($input['contrast_exclusions']  ?? $defaults['contrast_exclusions']);
     $clean['saturation_exclusions'] = sanitize_textarea_field($input['saturation_exclusions'] ?? $defaults['saturation_exclusions']);
+
+    // Wykluczone URL-e stron
+    $clean['exclude_urls'] = sanitize_textarea_field($input['exclude_urls'] ?? '');
 
     return $clean;
 }
@@ -241,6 +247,14 @@ add_action('wp_enqueue_scripts', function () {
     $s = evk_a11y_get_settings();
     if (empty($s['enabled'])) return;
     if (function_exists('bricks_is_builder_main') && bricks_is_builder_main()) return;
+
+    // Wykluczenia stron po ścieżce URL
+    if (!empty($s['exclude_urls'])) {
+        $current = $_SERVER['REQUEST_URI'] ?? '';
+        foreach (array_filter(array_map('trim', explode("\n", $s['exclude_urls']))) as $excl) {
+            if ($excl !== '' && strpos($current, $excl) !== false) return;
+        }
+    }
 
     // Enqueue JS widgetu
     wp_enqueue_script(

@@ -183,5 +183,27 @@ add_action('wp_head', function () {
             margin-top: 0 !important;
         }
     </style>
+    <script>
+    (function () {
+        function patchLinks(root) {
+            root.querySelectorAll('a[href]').forEach(function (a) {
+                var href = a.getAttribute('href');
+                if (href && href.charAt(0) !== '#' && href.indexOf('javascript') !== 0) {
+                    a.setAttribute('target', '_top');
+                }
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            patchLinks(document.body);
+            new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    m.addedNodes.forEach(function (n) {
+                        if (n.nodeType === 1) patchLinks(n);
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        });
+    })();
+    </script>
     <?php
 });

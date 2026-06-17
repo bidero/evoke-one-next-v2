@@ -45,6 +45,27 @@ if (!defined('ABSPATH')) exit;
                 .evo-og-media-row img { max-height:40px; max-width:80px; object-fit:contain; border-radius:4px; border:1px solid #e5e7eb; }
             </style>
 
+            <div class="evo-status-card" style="margin-bottom:20px;">
+                <div class="evo-status-icon <?php echo !empty($og['enabled']) ? 'on' : 'off'; ?>">
+                    <span class="dashicons dashicons-share" style="font-size:24px;width:24px;height:24px;line-height:1;"></span>
+                </div>
+                <div class="evo-status-text">
+                    <h3>Generator OG: <?php echo !empty($og['enabled']) ? 'WŁĄCZONY' : 'WYŁĄCZONY'; ?></h3>
+                    <p><?php echo !empty($og['enabled']) ? 'Obrazy OG są generowane i dodawane do &lt;head&gt;.' : 'Generator wyłączony — brak meta og:image, brak generowania.'; ?></p>
+                </div>
+                <div class="evo-status-actions">
+                    <span class="evo-toggle-label"><?php echo !empty($og['enabled']) ? 'Włączony' : 'Wyłączony'; ?></span>
+                    <label class="evo-toggle">
+                        <input type="checkbox"
+                               data-option="evk_og"
+                               data-field="enabled"
+                               value="1"
+                               <?php checked(!empty($og['enabled'])); ?>>
+                        <span class="evo-slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <form method="post" action="options.php" id="evk-og-form">
                 <?php settings_fields('evoke_one_og'); ?>
 
