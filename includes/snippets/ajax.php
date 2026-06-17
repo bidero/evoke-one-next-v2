@@ -72,7 +72,74 @@ add_action('admin_enqueue_scripts', function () {
 });
 
 // =========================================================================
-// RENDER — zakładka snippetów (wywoływana z 99-admin-page.php)
+// POST HANDLER — musi działać w admin_init (przed jakimkolwiek outputem)
+// =========================================================================
+
+add_action('admin_init', function () {
+    // Tylko strona Evoke ONE, zakładka narzędzia/snippets, metoda POST
+    if (
+        !is_admin()
+        || ($_GET['page'] ?? '') !== 'evoke-one'
+        || ($_GET['tab']  ?? '') !== 'narzedzia'
+        || ($_GET['sub']  ?? '') !== 'snippets'
+        || $_SERVER['REQUEST_METHOD'] !== 'POST'
+        || empty($_POST['evk_snippets_nonce_field'])
+    ) return;
+
+    if (!current_user_can('manage_options')) wp_die('Brak uprawnień.');
+    if (!wp_verify_nonce($_POST['evk_snippets_nonce_field'], 'evk_snippets_save')) wp_die('Nieprawidłowy nonce.');
+
+    $defs  = evk_snippets_defs();
+    $stab  = sanitize_key($_GET['evk_stab'] ?? 'frontend');
+    $redir = admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets');
+
+    // Wyczyść logi
+    if (isset($_POST['evk_clear_logs'])) {
+        update_option(EVK_SNIPPETS_LOG_OPTION, []);
+        wp_redirect(add_query_arg(['evk_stab' => 'logs', 'evk_saved' => 'logs'], $redir));
+        exit;
+    }
+
+    // Wyczyść rewizje
+    if (!empty($_POST['evk_clear_revisions_key'])) {
+        $key = sanitize_key($_POST['evk_clear_revisions_key']);
+        if (isset($defs[$key])) {
+            $pid = evk_snippet_get_id($defs[$key]['slug']);
+            if ($pid) {
+                foreach (wp_get_post_revisions($pid, ['fields' => 'ids', 'posts_per_page' => -1]) as $rid) {
+                    wp_delete_post_revision($rid);
+                }
+            }
+        }
+        wp_redirect(add_query_arg(['evk_stab' => $key, 'evk_saved' => 'revisions'], $redir));
+        exit;
+    }
+
+    // Zapis główny
+    if (isset($_POST['evk_save_snippets'])) {
+        update_option(EVK_SNIPPETS_ENABLED_OPTION,   !empty($_POST[EVK_SNIPPETS_ENABLED_OPTION]) ? 1 : 0);
+        update_option(EVK_SNIPPETS_ADVANCED_ENABLED, !empty($_POST[EVK_SNIPPETS_ADVANCED_ENABLED]) ? 1 : 0);
+
+        if (get_option(EVK_SNIPPETS_ENABLED_OPTION)) {
+            delete_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
+        }
+
+        foreach ($defs as $key => $def) {
+            if (isset($_POST[$def['field_id']])) {
+                evk_snippet_save($def['slug'], $def['title'], wp_unslash($_POST[$def['field_id']]));
+            }
+        }
+        if (isset($_POST['evk_advanced_code'])) {
+            evk_snippets_advanced_save(wp_unslash($_POST['evk_advanced_code']));
+        }
+
+        wp_redirect(add_query_arg(['evk_stab' => $stab, 'evk_saved' => '1'], $redir));
+        exit;
+    }
+});
+
+// =========================================================================
+// RENDER — zakładka snippetów (wywoływana z tab-narzedzia.php)
 // =========================================================================
 
 function evk_snippets_render_tab(): void {
@@ -80,64 +147,10 @@ function evk_snippets_render_tab(): void {
 
     $is_disabled = defined('EVK_CODE_DISABLE') && EVK_CODE_DISABLE;
     $defs        = evk_snippets_defs();
-
-    // ── Obsługa POST — PRZED jakimkolwiek HTML ────────────────────────────
-    $save_notice = '';
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['evk_snippets_nonce_field'])
-        && wp_verify_nonce($_POST['evk_snippets_nonce_field'], 'evk_snippets_save')) {
-
-        // Wyczyść logi
-        if (isset($_POST['evk_clear_logs'])) {
-            update_option(EVK_SNIPPETS_LOG_OPTION, []);
-            wp_redirect(add_query_arg(['evk_stab' => sanitize_key($_GET['evk_stab'] ?? 'logs'), 'evk_saved' => 'logs'],
-                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
-            exit;
-        }
-        // Wyczyść rewizje
-        elseif (!empty($_POST['evk_clear_revisions_key'])) {
-            $key = sanitize_key($_POST['evk_clear_revisions_key']);
-            if (isset($defs[$key])) {
-                $pid = evk_snippet_get_id($defs[$key]['slug']);
-                if ($pid) {
-                    foreach (wp_get_post_revisions($pid, ['fields' => 'ids', 'posts_per_page' => -1]) as $rid) {
-                        wp_delete_post_revision($rid);
-                    }
-                }
-            }
-            wp_redirect(add_query_arg(['evk_stab' => $key, 'evk_saved' => 'revisions'],
-                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
-            exit;
-        }
-        // Zapis
-        elseif (isset($_POST['evk_save_snippets'])) {
-            update_option(EVK_SNIPPETS_ENABLED_OPTION,   !empty($_POST[EVK_SNIPPETS_ENABLED_OPTION]) ? 1 : 0);
-            update_option(EVK_SNIPPETS_ADVANCED_ENABLED, !empty($_POST[EVK_SNIPPETS_ADVANCED_ENABLED]) ? 1 : 0);
-
-            if (get_option(EVK_SNIPPETS_ENABLED_OPTION)) {
-                delete_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
-            }
-
-            foreach ($defs as $key => $def) {
-                if (isset($_POST[$def['field_id']])) {
-                    evk_snippet_save($def['slug'], $def['title'], wp_unslash($_POST[$def['field_id']]));
-                }
-            }
-            if (isset($_POST['evk_advanced_code'])) {
-                evk_snippets_advanced_save(wp_unslash($_POST['evk_advanced_code']));
-            }
-
-            wp_redirect(add_query_arg(['evk_stab' => sanitize_key($_GET['evk_stab'] ?? 'frontend'), 'evk_saved' => '1'],
-                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
-            exit;
-        }
-    }
-
-    // ── Odczyt opcji PO obsłudze POST (redirect już nastąpił jeśli był POST) ──
     $adv_enabled = (int) get_option(EVK_SNIPPETS_ADVANCED_ENABLED, 0);
     $enabled     = (int) get_option(EVK_SNIPPETS_ENABLED_OPTION, 0);
     $fatal       = (bool) get_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
 
-    // Podzakładki snippetów
     $stab_keys   = array_keys($defs);
     $stab_keys[] = 'logs';
     if ($adv_enabled) $stab_keys[] = 'advanced';
@@ -146,7 +159,7 @@ function evk_snippets_render_tab(): void {
 
     $base_url = admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets');
 
-    // Komunikat po zapisie (po redirect)
+    // Komunikat po zapisie (po redirect POST → GET)
     if (!empty($_GET['evk_saved'])) {
         echo '<div class="updated notice is-dismissible"><p>Snippety zapisane.</p></div>';
     }
