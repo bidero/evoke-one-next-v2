@@ -79,6 +79,16 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
             <input type="text" name="evk_forminbox[email_field]" value="<?php echo esc_attr($fi['email_field']); ?>" placeholder="np. 436dec" style="max-width:160px;">
             <div class="evo-desc">Auto-detect jeśli puste.</div>
         </div>
+        <div class="evo-field" style="margin:0;">
+            <label>Szablon nazwy w sidebarze</label>
+            <input type="text" name="evk_forminbox[name_template]" value="<?php echo esc_attr($fi['name_template'] ?? ''); ?>" placeholder="np. {{nazwisko}} {{imie}}" style="max-width:260px;">
+            <div class="evo-desc">Używa {{klucz}} — te same co mapowanie pól. Jeśli puste — auto-detect.</div>
+        </div>
+        <div class="evo-field" style="margin:0;">
+            <label>Klucz pola podglądu (sidebar)</label>
+            <input type="text" name="evk_forminbox[preview_field]" value="<?php echo esc_attr($fi['preview_field'] ?? ''); ?>" placeholder="np. fonlfr (Temat)" style="max-width:200px;">
+            <div class="evo-desc">Treść tego pola pojawia się pod nazwą w liście. Jeśli puste — pierwsze pole.</div>
+        </div>
     </div>
 
     <hr class="evo-divider">
@@ -162,6 +172,61 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 
     <!-- ── SZABLON WIADOMOŚCI ────────────────────────────────────────── -->
     <hr class="evo-divider" style="margin-top:24px;">
+    <p class="evo-section-title">Nazwy formularzy</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
+        <span class="dashicons dashicons-info"></span>
+        <div>
+            Przypisz czytelne nazwy do identyfikatorów formularzy Bricks (np. <code>yrckyz</code> → <em>Formularz kontaktowy</em>).
+            Nazwa pojawia się w sidebarze, nagłówku wiadomości i filtrze formularzy.
+        </div>
+    </div>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+        <button type="button" id="evk-add-form-row" class="button button-secondary">
+            <span class="dashicons dashicons-plus" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+            Dodaj formularz
+        </button>
+        <?php if ($has_tbl): ?>
+        <button type="button" id="evk-load-forms" class="button">
+            <span class="dashicons dashicons-update" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+            Załaduj ID z bazy
+        </button>
+        <?php endif; ?>
+        <span id="evk-forms-msg" style="font-size:12px;color:#6b7280;"></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:24px;">
+        <thead>
+            <tr style="border-bottom:2px solid #e2e8f0;">
+                <th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;width:200px;">ID formularza Bricks</th>
+                <th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;">Twoja nazwa</th>
+                <th style="width:36px;"></th>
+            </tr>
+        </thead>
+        <tbody id="evk-forms-tbody">
+            <?php
+            $saved_form_names = $fi['form_names'] ?? [];
+            if (!empty($saved_form_names)):
+                foreach ($saved_form_names as $fid => $fname): ?>
+            <tr class="evk-form-row" style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:6px 10px;">
+                    <input type="text" name="evk_forminbox[form_names_keys][]" value="<?php echo esc_attr($fid); ?>" placeholder="ID formularza" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;">
+                </td>
+                <td style="padding:6px 10px;">
+                    <input type="text" name="evk_forminbox[form_names_vals][]" value="<?php echo esc_attr($fname); ?>" placeholder="Czytelna nazwa" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;">
+                </td>
+                <td style="padding:6px 4px;text-align:center;">
+                    <button type="button" class="evk-remove-form-row button-link" style="color:#ef4444;padding:2px 4px;">
+                        <span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
+                    </button>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            <?php else: ?>
+            <tr id="evk-no-form-rows"><td colspan="3" style="padding:14px 10px;color:#94a3b8;font-style:italic;text-align:center;">Brak mapowań formularzy.</td></tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <hr class="evo-divider" style="margin-top:0;">
     <p class="evo-section-title">Szablon wyświetlania wiadomości</p>
     <div class="evo-info-box" style="margin-bottom:14px;">
         <span class="dashicons dashicons-info"></span>
@@ -362,4 +427,42 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
     updateVarPalette();
 
 })(jQuery);
+
+    // ── Tabela nazw formularzy ────────────────────────────────
+    function addFormRow(id, name) {
+        $('#evk-no-form-rows').remove();
+        var row = $('<tr class="evk-form-row" style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:6px 10px;"><input type="text" name="evk_forminbox[form_names_keys][]" value="' + esc(id||'') + '" placeholder="ID formularza" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;"></td>' +
+            '<td style="padding:6px 10px;"><input type="text" name="evk_forminbox[form_names_vals][]" value="' + esc(name||'') + '" placeholder="Czytelna nazwa" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;"></td>' +
+            '<td style="padding:6px 4px;text-align:center;"><button type="button" class="evk-remove-form-row button-link" style="color:#ef4444;padding:2px 4px;"><span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span></button></td>' +
+        '</tr>');
+        $('#evk-forms-tbody').append(row);
+    }
+
+    $('#evk-add-form-row').on('click', function() { addFormRow('', ''); });
+    $(document).on('click', '.evk-remove-form-row', function() {
+        $(this).closest('tr').remove();
+        if (!$('#evk-forms-tbody .evk-form-row').length) {
+            $('#evk-forms-tbody').append('<tr id="evk-no-form-rows"><td colspan="3" style="padding:14px 10px;color:#94a3b8;font-style:italic;text-align:center;">Brak mapowań formularzy.</td></tr>');
+        }
+    });
+
+    <?php if ($has_tbl): ?>
+    $('#evk-load-forms').on('click', function() {
+        $('#evk-forms-msg').text('Ładowanie…');
+        $.get(window.ajaxurl, { action: 'evk_inbox_forms', nonce: NONCE }, function(r) {
+            if (!r.success) { $('#evk-forms-msg').text('Błąd.'); return; }
+            var existing = {};
+            $('#evk-forms-tbody .evk-form-row').each(function() {
+                existing[$(this).find('input:first').val()] = true;
+            });
+            var added = 0;
+            (r.data.forms || []).forEach(function(f) {
+                if (!existing[f.form_id]) { addFormRow(f.form_id, ''); added++; }
+            });
+            $('#evk-forms-msg').text(added ? added + ' ID dodano.' : 'Wszystkie już skonfigurowane.');
+        });
+    });
+    <?php endif; ?>
+
 </script>

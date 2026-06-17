@@ -23,6 +23,9 @@ function evk_inbox_defaults(): array {
         'hidden_fields' => [],   // ['form-field-xyz']
         'email_field'      => '',   // klucz pola z e-mailem (auto-detect jeśli puste)
         'message_template' => '',   // szablon z {{klucz}} placeholderami
+        'name_template'    => '',   // szablon nazwy w sidebarze, np. {{nazwisko}} {{imie}}
+        'preview_field'    => '',   // klucz pola dla linii podglądu w sidebarze
+        'form_names'       => [],   // ['form_id' => 'Czytelna nazwa']
     ];
 }
 
@@ -59,7 +62,22 @@ function evk_inbox_sanitize_settings($input): array {
     $c['menu_position'] = max(1, min(100, intval($input['menu_position'] ?? 25)));
     $c['per_page']      = max(5, min(100, intval($input['per_page']   ?? 25)));
     $c['email_field']      = sanitize_key($input['email_field'] ?? '');
-    $c['message_template'] = wp_kses_post($input['message_template'] ?? ''); // pozwala na encje HTML
+    $c['message_template'] = sanitize_textarea_field($input['message_template'] ?? '');
+    $c['name_template']    = sanitize_text_field($input['name_template']    ?? '');
+    $c['preview_field']    = sanitize_text_field(trim($input['preview_field'] ?? ''));
+    $c['preview_field']    = preg_replace('/[^a-z0-9_-]/i', '', $c['preview_field']);
+
+    $form_names = [];
+    $fn_keys = $input['form_names_keys'] ?? [];
+    $fn_vals = $input['form_names_vals'] ?? [];
+    if (is_array($fn_keys)) {
+        foreach ($fn_keys as $i => $k) {
+            $k = sanitize_text_field(trim($k));
+            $v = sanitize_text_field(trim($fn_vals[$i] ?? ''));
+            if ($k && $v) $form_names[$k] = $v;
+        }
+    }
+    $c['form_names'] = $form_names;
 
     // Mapowanie pól: dwie równoległe tablice keys[] + vals[]
     $labels = [];
@@ -174,29 +192,40 @@ function evk_inbox_field_label(string $key, array $s): string {
  * Renderuje szablon wiadomości — zastępuje {{klucz}} wartościami pól.
  * Escape HTML wbudowany — bezpieczny output.
  */
-function evk_inbox_render_template(string $tpl, array $raw_fields): string {
-    // Zbuduj mapę escaped_key => escaped_value (i skrócony klucz)
+function evk_inbox_render_template(string $tpl, array $raw_fields, bool $raw_output = false): string {
     $map = [];
     foreach ($raw_fields as $key => $value) {
-        $v = is_array($value) ? implode(', ', $value) : (string) $value;
+        // Stripuj prefiks Bricks "type, value"
+        $v = evk_inbox_extract_value($value);
         $map[$key] = $v;
         $short = preg_replace('/^form-field-/', '', $key);
         if ($short !== $key) $map[$short] = $v;
     }
-    // Podmień placeholdery w surowym szablonie
     $output = $tpl;
     foreach ($map as $k => $v) {
         $output = str_replace('{{' . $k . '}}', $v, $output);
     }
-    // Escape całości i zachowaj nowe linie
+    if ($raw_output) return $output; // dla get_name — bez escape
     return nl2br(esc_html($output));
 }
 
-function evk_inbox_get_preview(array $fields): string {
-    foreach ($fields as $v) {
-        if (is_string($v) && strlen(trim($v)) > 0) {
-            return mb_substr(strip_tags($v), 0, 100);
+function evk_inbox_get_preview(array $fields, array $s = []): string {
+    // Skonfigurowane pole podglądu
+    if (!empty($s['preview_field'])) {
+        $key = $s['preview_field'];
+        // Szukaj pełnego klucza i krótkiego
+        foreach ($fields as $k => $v) {
+            $short = preg_replace('/^form-field-/', '', $k);
+            if ($k === $key || $short === $key) {
+                $val = evk_inbox_extract_value($v);
+                if (trim($val)) return mb_substr($val, 0, 100);
+            }
         }
+    }
+    // Auto: pierwsze niepuste pole
+    foreach ($fields as $v) {
+        $val = evk_inbox_extract_value($v);
+        if (trim($val)) return mb_substr($val, 0, 100);
     }
     return '—';
 }
@@ -212,19 +241,49 @@ function evk_inbox_find_email(array $fields, string $forced_key = ''): string {
     return '';
 }
 
-function evk_inbox_get_name(array $fields): string {
-    $name_hints = ['name', 'imie', 'imię', 'nazwisko', 'fullname', 'full_name', 'first_name'];
+/**
+ * Bricks zapisuje wartości jako "type, value" (np. "select, Rezerwacja noclegu").
+ * Stripujemy prefiks aby uzyskać czystą wartość.
+ */
+function evk_inbox_extract_value($raw): string {
+    if (is_array($raw)) {
+        // checkbox może być tablicą wartości
+        return implode(', ', array_map('evk_inbox_extract_value', $raw));
+    }
+    $raw = (string) $raw;
+    static $types = ['textarea','select','checkbox','radio','email','tel','number','date','file','password','url','text','hidden','range','color','time','week','month','datetime-local'];
+    foreach ($types as $t) {
+        if (strncasecmp($raw, $t . ', ', strlen($t) + 2) === 0) {
+            return substr($raw, strlen($t) + 2);
+        }
+    }
+    return $raw;
+}
+
+function evk_inbox_get_name(array $fields, array $s = []): string {
+    // Szablon nazwy skonfigurowany przez użytkownika
+    if (!empty($s['name_template'])) {
+        $rendered = evk_inbox_render_template($s['name_template'], $fields, true);
+        $rendered = strip_tags($rendered);
+        $rendered = trim(str_replace('&nbsp;', ' ', html_entity_decode($rendered, ENT_QUOTES, 'UTF-8')));
+        if ($rendered && $rendered !== $s['name_template']) return $rendered;
+    }
+    // Auto-detect: szukaj pól name/imie/nazwisko
+    $name_hints = ['name', 'imie', 'imię', 'nazwisko', 'fullname', 'full_name', 'first_name', 'last_name'];
     foreach ($fields as $k => $v) {
-        if (!is_string($v) || !trim($v)) continue;
+        $val = evk_inbox_extract_value($v);
+        if (!trim($val)) continue;
         foreach ($name_hints as $h) {
-            if (stripos($k, $h) !== false && strlen($v) < 100 && !is_email($v)) {
-                return sanitize_text_field($v);
+            if (stripos($k, $h) !== false && strlen($val) < 100 && !is_email($val)) {
+                return sanitize_text_field($val);
             }
         }
     }
+    // Pierwsze krótkie pole tekstowe
     foreach ($fields as $v) {
-        if (is_string($v) && trim($v) && strlen($v) < 80 && !is_email($v)) {
-            return sanitize_text_field($v);
+        $val = evk_inbox_extract_value($v);
+        if (trim($val) && strlen($val) < 80 && !is_email($val)) {
+            return sanitize_text_field($val);
         }
     }
     return 'Anonimowy';
@@ -245,11 +304,17 @@ add_action('wp_ajax_evk_inbox_forms', function () {
 
     $rows = $wpdb->get_results("SELECT form_id, COUNT(*) as cnt FROM {$table} GROUP BY form_id ORDER BY cnt DESC");
 
+    $s = evk_inbox_get_settings();
     $forms = []; $all_cnt = 0; $all_unread = 0;
     foreach ($rows as $r) {
         $ids    = array_map('intval', $wpdb->get_col($wpdb->prepare("SELECT id FROM {$table} WHERE form_id = %s", $r->form_id)));
         $unread = count(array_diff($ids, $read));
-        $forms[]     = ['form_id' => $r->form_id, 'count' => (int)$r->cnt, 'unread' => $unread];
+        $forms[]     = [
+            'form_id'    => $r->form_id,
+            'form_label' => $s['form_names'][$r->form_id] ?? $r->form_id,
+            'count'      => (int)$r->cnt,
+            'unread'     => $unread,
+        ];
         $all_cnt    += (int)$r->cnt;
         $all_unread += $unread;
     }
@@ -291,14 +356,16 @@ add_action('wp_ajax_evk_inbox_list', function () {
     $items = [];
     foreach ($rows as $row) {
         $fields  = json_decode($row->form_data, true) ?: [];
+        $form_label = $s['form_names'][$row->form_id] ?? $row->form_id;
         $items[] = [
-            'id'      => (int) $row->id,
-            'form_id' => $row->form_id,
-            'name'    => evk_inbox_get_name($fields),
-            'email'   => evk_inbox_find_email($fields, $s['email_field']),
-            'preview' => evk_inbox_get_preview($fields),
-            'date'    => evk_inbox_format_date($row->created_at),
-            'is_read' => in_array((int) $row->id, $read, true),
+            'id'         => (int) $row->id,
+            'form_id'    => $row->form_id,
+            'form_label' => $form_label,
+            'name'       => evk_inbox_get_name($fields, $s),
+            'email'      => evk_inbox_find_email($fields, $s['email_field']),
+            'preview'    => evk_inbox_get_preview($fields, $s),
+            'date'       => evk_inbox_format_date($row->created_at),
+            'is_read'    => in_array((int) $row->id, $read, true),
         ];
     }
     wp_send_json_success(['items' => $items, 'total' => $total, 'page' => $page, 'per_page' => $per_page, 'pages' => (int) ceil($total / max(1, $per_page))]);
@@ -325,13 +392,16 @@ add_action('wp_ajax_evk_inbox_detail', function () {
 
     $display = [];
     foreach ($fields as $k => $v) {
-        if (in_array($k, $s['hidden_fields'], true)) continue;
+        // Sprawdź pełny i krótki klucz dla hidden_fields
+        $short = preg_replace('/^form-field-/', '', $k);
+        if (in_array($k, $s['hidden_fields'], true) || in_array($short, $s['hidden_fields'], true)) continue;
         $display[] = [
             'key'   => $k,
             'label' => evk_inbox_field_label($k, $s),
-            'value' => is_array($v) ? implode(', ', $v) : (string) $v,
+            'value' => evk_inbox_extract_value($v),
         ];
     }
+    $form_label = $s['form_names'][$row->form_id] ?? $row->form_id;
 
     $user_name = '';
     if (!empty($row->user_id) && ($u = get_userdata((int)$row->user_id))) {
@@ -342,8 +412,9 @@ add_action('wp_ajax_evk_inbox_detail', function () {
     $rendered = $has_tpl ? evk_inbox_render_template($s['message_template'], $fields) : '';
 
     wp_send_json_success([
-        'id'           => (int) $row->id,
-        'form_id'      => $row->form_id,
+        'id'         => (int) $row->id,
+        'form_id'    => $row->form_id,
+        'form_label' => $form_label,
         'fields'       => $display,
         'has_template' => $has_tpl,
         'rendered'     => $rendered,

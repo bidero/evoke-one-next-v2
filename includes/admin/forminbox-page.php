@@ -327,7 +327,7 @@ $table_ok   = evk_inbox_table_exists();
             r.data.forms.forEach(function(f) {
                 const opt = document.createElement('option');
                 opt.value = f.form_id;
-                opt.textContent = f.form_id + (f.unread ? ' (' + f.unread + ')' : '');
+                opt.textContent = (f.form_label || f.form_id) + (f.unread ? ' (' + f.unread + ')' : '');
                 sel.appendChild(opt);
             });
         });
@@ -365,7 +365,7 @@ $table_ok   = evk_inbox_table_exists();
                             <span class="evk-inbox-item-name">${esc(item.name)}</span>
                             <span class="evk-inbox-item-date">${esc(item.date)}</span>
                         </div>
-                        <div class="evk-inbox-item-form">${esc(item.form_id)}</div>
+                        <div class="evk-inbox-item-form">${esc(item.form_label || item.form_id)}</div>
                         <div class="evk-inbox-item-preview">${esc(item.preview)}</div>
                     </div>
                 </div>`;
@@ -439,7 +439,7 @@ $table_ok   = evk_inbox_table_exists();
                 <div class="evk-inbox-detail-header">
                     <div class="evk-inbox-detail-title">
                         <h2>${esc(d.name)}</h2>
-                        <span class="evk-inbox-meta-form">${esc(d.form_id)}</span>
+                        <span class="evk-inbox-meta-form">${esc(d.form_label || d.form_id)}</span>
                         ${d.email ? `<span style="font-size:12px;color:#64748b;margin-left:8px;">${esc(d.email)}</span>` : ''}
                     </div>
                     <div class="evk-inbox-detail-actions">
