@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) exit;
                         <input type="hidden" name="maintenance_page_id"         value="<?php echo esc_attr($selected_page_id); ?>">
                         <input type="hidden" name="maintenance_excluded_paths"  value="<?php echo esc_attr($excluded_paths); ?>">
                         <label class="evo-toggle">
-                            <input type="checkbox" name="maintenance_mode" data-option="maintenance_mode" data-field="_scalar" value="1" onchange="this.form.submit()" <?php checked(1, $status); ?>>
+                            <input type="checkbox" name="maintenance_mode" data-option="maintenance_mode" data-field="_scalar" value="1" <?php checked(1, $status); ?>>
                             <span class="evo-slider"></span>
                         </label>
                     </form>

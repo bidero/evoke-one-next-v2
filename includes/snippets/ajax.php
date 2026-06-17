@@ -80,52 +80,18 @@ function evk_snippets_render_tab(): void {
 
     $is_disabled = defined('EVK_CODE_DISABLE') && EVK_CODE_DISABLE;
     $defs        = evk_snippets_defs();
-    $adv_enabled = (int) get_option(EVK_SNIPPETS_ADVANCED_ENABLED, 0);
-    $enabled     = (int) get_option(EVK_SNIPPETS_ENABLED_OPTION, 0);
-    $fatal       = (bool) get_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
 
-    // Podzakładki snippetów
-    $stab_keys   = array_keys($defs);
-    $stab_keys[] = 'logs';
-    if ($adv_enabled) $stab_keys[] = 'advanced';
-    $stab = isset($_GET['evk_stab']) && in_array($_GET['evk_stab'], $stab_keys, true)
-        ? $_GET['evk_stab'] : 'frontend';
-
-    $base_url = admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets');
-
-    // ── Status card — zawsze widoczny na górze ────────────────────────────
-    ?>
-    <div class="evo-status-card" style="margin-bottom:20px;">
-        <div class="evo-status-icon <?php echo $enabled ? 'on' : 'off'; ?>">
-            <span class="dashicons dashicons-editor-code" style="font-size:24px;width:24px;height:24px;line-height:1;"></span>
-        </div>
-        <div class="evo-status-text">
-            <h3>Snippety: <?php echo $enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'; ?></h3>
-            <p><?php echo $enabled ? 'Kod PHP jest aktywnie wykonywany.' : 'Wykonywanie kodu wyłączone.'; ?></p>
-        </div>
-        <div class="evo-status-actions">
-            <span class="evo-toggle-label"><?php echo $enabled ? 'Włączony' : 'Wyłączony'; ?></span>
-            <form method="post" action="<?php echo esc_url(add_query_arg('evk_stab', $stab, $base_url)); ?>" style="display:contents;">
-                <?php wp_nonce_field('evk_snippets_save', 'evk_snippets_nonce_field'); ?>
-                <label class="evo-toggle">
-                    <input type="checkbox" name="<?php echo EVK_SNIPPETS_ENABLED_OPTION; ?>" value="1"
-                           onchange="this.form.submit()" <?php checked(1, $enabled); ?>>
-                    <span class="evo-slider"></span>
-                </label>
-                <input type="hidden" name="evk_save_snippets" value="1">
-                <input type="hidden" name="<?php echo EVK_SNIPPETS_ADVANCED_ENABLED; ?>" value="<?php echo $adv_enabled; ?>">
-            </form>
-        </div>
-    </div>
-    <?php
-
-    // Obsługa POST
+    // ── Obsługa POST — PRZED jakimkolwiek HTML ────────────────────────────
+    $save_notice = '';
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['evk_snippets_nonce_field'])
         && wp_verify_nonce($_POST['evk_snippets_nonce_field'], 'evk_snippets_save')) {
 
         // Wyczyść logi
         if (isset($_POST['evk_clear_logs'])) {
             update_option(EVK_SNIPPETS_LOG_OPTION, []);
+            wp_redirect(add_query_arg(['evk_stab' => sanitize_key($_GET['evk_stab'] ?? 'logs'), 'evk_saved' => 'logs'],
+                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
+            exit;
         }
         // Wyczyść rewizje
         elseif (!empty($_POST['evk_clear_revisions_key'])) {
@@ -138,6 +104,9 @@ function evk_snippets_render_tab(): void {
                     }
                 }
             }
+            wp_redirect(add_query_arg(['evk_stab' => $key, 'evk_saved' => 'revisions'],
+                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
+            exit;
         }
         // Zapis
         elseif (isset($_POST['evk_save_snippets'])) {
@@ -157,12 +126,54 @@ function evk_snippets_render_tab(): void {
                 evk_snippets_advanced_save(wp_unslash($_POST['evk_advanced_code']));
             }
 
-            // Odśwież zmienne
-            $enabled     = (int) get_option(EVK_SNIPPETS_ENABLED_OPTION, 0);
-            $adv_enabled = (int) get_option(EVK_SNIPPETS_ADVANCED_ENABLED, 0);
-            echo '<div class="updated notice is-dismissible"><p>Snippety zapisane.</p></div>';
+            wp_redirect(add_query_arg(['evk_stab' => sanitize_key($_GET['evk_stab'] ?? 'frontend'), 'evk_saved' => '1'],
+                admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets')));
+            exit;
         }
     }
+
+    // ── Odczyt opcji PO obsłudze POST (redirect już nastąpił jeśli był POST) ──
+    $adv_enabled = (int) get_option(EVK_SNIPPETS_ADVANCED_ENABLED, 0);
+    $enabled     = (int) get_option(EVK_SNIPPETS_ENABLED_OPTION, 0);
+    $fatal       = (bool) get_transient(EVK_SNIPPETS_FATAL_TRANSIENT);
+
+    // Podzakładki snippetów
+    $stab_keys   = array_keys($defs);
+    $stab_keys[] = 'logs';
+    if ($adv_enabled) $stab_keys[] = 'advanced';
+    $stab = isset($_GET['evk_stab']) && in_array($_GET['evk_stab'], $stab_keys, true)
+        ? $_GET['evk_stab'] : 'frontend';
+
+    $base_url = admin_url('options-general.php?page=evoke-one&tab=narzedzia&sub=snippets');
+
+    // Komunikat po zapisie (po redirect)
+    if (!empty($_GET['evk_saved'])) {
+        echo '<div class="updated notice is-dismissible"><p>Snippety zapisane.</p></div>';
+    }
+
+    // ── Status card — zawsze widoczny na górze ────────────────────────────
+    ?>
+    <div class="evo-status-card" style="margin-bottom:20px;">
+        <div class="evo-status-icon <?php echo $enabled ? 'on' : 'off'; ?>">
+            <span class="dashicons dashicons-editor-code" style="font-size:24px;width:24px;height:24px;line-height:1;"></span>
+        </div>
+        <div class="evo-status-text">
+            <h3>Snippety: <?php echo $enabled ? 'WŁĄCZONY' : 'WYŁĄCZONY'; ?></h3>
+            <p><?php echo $enabled ? 'Kod PHP jest aktywnie wykonywany.' : 'Wykonywanie kodu wyłączone.'; ?></p>
+        </div>
+        <div class="evo-status-actions">
+            <span class="evo-toggle-label"><?php echo $enabled ? 'Włączony' : 'Wyłączony'; ?></span>
+            <label class="evo-toggle">
+                <input type="checkbox"
+                       data-option="evk_snippets_enabled"
+                       data-field="_scalar"
+                       value="1"
+                       <?php checked(1, $enabled); ?>>
+                <span class="evo-slider"></span>
+            </label>
+        </div>
+    </div>
+    <?php
 
     ?>
     <?php if ($is_disabled): ?>
@@ -176,7 +187,7 @@ function evk_snippets_render_tab(): void {
               style="color:<?php echo $enabled ? '#059669' : '#d97706'; ?>;"></span>
         <div>
             Globalne wykonywanie snippetów:
-            <strong><?php echo $enabled ? 'WŁĄCZONE' : 'WYŁĄCZONE'; ?></strong>
+            <strong><?php echo $enabled ? 'WŁĄCZONY' : 'WYŁĄCZONY'; ?></strong>
             <?php if (!$enabled && $fatal): ?>
             — <span style="color:#dc2626;">automatycznie wyłączone po błędzie krytycznym</span>
             <?php endif; ?>
