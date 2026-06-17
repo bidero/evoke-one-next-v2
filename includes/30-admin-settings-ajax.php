@@ -235,6 +235,7 @@ add_action('wp_ajax_tl_export', function () {
         'evk_darkmode'        => fn() => ['evk_darkmode'        => get_option('evk_darkmode', [])],
         'evk_cursor'          => fn() => ['evk_cursor'          => get_option('evk_cursor', [])],
         'evk_lenis'           => fn() => ['evk_lenis'           => get_option('evk_lenis', [])],
+        'evk_forminbox'       => fn() => ['evk_forminbox' => get_option('evk_forminbox', [])],
         'evk_parallax'        => fn() => [
             'evk_parallax'       => get_option('evk_parallax', []),
             'evk_parallax_value' => get_option('evk_parallax_value', 0.3),
@@ -587,6 +588,7 @@ add_action('wp_ajax_evk_ajax_toggle', function () {
         'evoke_dashboard_shadow'        => ['_scalar'],
         'evk_tl_module_enabled'         => ['_scalar'],
         'evk_tl_fab_enabled'             => ['_scalar'],
+        'evk_forminbox'                  => ['enabled'],
         'evk_snippets_enabled'          => ['_scalar'],
     ];
 
