@@ -426,20 +426,19 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
     syncHiddenCbValues();
     updateVarPalette();
 
-})(jQuery);
-
     // ── Tabela nazw formularzy ────────────────────────────────
     function addFormRow(id, name) {
         $('#evk-no-form-rows').remove();
         var row = $('<tr class="evk-form-row" style="border-bottom:1px solid #f1f5f9;">' +
             '<td style="padding:6px 10px;"><input type="text" name="evk_forminbox[form_names_keys][]" value="' + esc(id||'') + '" placeholder="ID formularza" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;"></td>' +
             '<td style="padding:6px 10px;"><input type="text" name="evk_forminbox[form_names_vals][]" value="' + esc(name||'') + '" placeholder="Czytelna nazwa" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;"></td>' +
-            '<td style="padding:6px 4px;text-align:center;"><button type="button" class="evk-remove-form-row button-link" style="color:#ef4444;padding:2px 4px;"><span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span></button></td>' +
+            '<td style="padding:6px 4px;text-align:center;"><button type="button" class="evk-remove-form-row button-link" style="color:#ef4444;padding:2px 4px;" title="Usuń"><span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span></button></td>' +
         '</tr>');
         $('#evk-forms-tbody').append(row);
     }
 
     $('#evk-add-form-row').on('click', function() { addFormRow('', ''); });
+
     $(document).on('click', '.evk-remove-form-row', function() {
         $(this).closest('tr').remove();
         if (!$('#evk-forms-tbody .evk-form-row').length) {
@@ -451,10 +450,10 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
     $('#evk-load-forms').on('click', function() {
         $('#evk-forms-msg').text('Ładowanie…');
         $.get(window.ajaxurl, { action: 'evk_inbox_forms', nonce: NONCE }, function(r) {
-            if (!r.success) { $('#evk-forms-msg').text('Błąd.'); return; }
+            if (!r.success) { $('#evk-forms-msg').text('Błąd: ' + (r.data || 'nieznany')); return; }
             var existing = {};
             $('#evk-forms-tbody .evk-form-row').each(function() {
-                existing[$(this).find('input:first').val()] = true;
+                existing[$(this).find('input:first').val().trim()] = true;
             });
             var added = 0;
             (r.data.forms || []).forEach(function(f) {
@@ -465,4 +464,5 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
     });
     <?php endif; ?>
 
+})(jQuery);
 </script>
