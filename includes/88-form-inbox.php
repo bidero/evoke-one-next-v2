@@ -25,6 +25,9 @@ function evk_inbox_defaults(): array {
         'message_template' => '',   // szablon z {{klucz}} placeholderami
         'name_template'    => '',   // szablon nazwy w sidebarze, np. {{nazwisko}} {{imie}}
         'preview_field'    => '',   // klucz pola dla linii podglądu w sidebarze
+        'subject_field'    => '',   // klucz pola tematu (nagłówek detalu); auto jeśli puste
+        'header_layout'    => [],   // [ ['key'=>'fonlfr','type'=>'subtitle'], ... ]
+        'sidebar_layout'   => [],   // [ ['key'=>'imie','type'=>'name'], ... ]
         'form_names'       => [],   // ['form_id' => 'Czytelna nazwa']
     ];
 }
@@ -66,6 +69,9 @@ function evk_inbox_sanitize_settings($input): array {
     $c['name_template']    = sanitize_text_field($input['name_template']    ?? '');
     $c['preview_field']    = sanitize_text_field(trim($input['preview_field'] ?? ''));
     $c['preview_field']    = preg_replace('/[^a-z0-9_-]/i', '', $c['preview_field']);
+    $c['subject_field']    = preg_replace('/[^a-z0-9_-]/i', '', sanitize_text_field(trim($input['subject_field'] ?? '')));
+    $c['header_layout']    = evk_inbox_sanitize_layout($input['header_layout_keys']  ?? [], $input['header_layout_types']  ?? [], ['title', 'subtitle', 'meta']);
+    $c['sidebar_layout']   = evk_inbox_sanitize_layout($input['sidebar_layout_keys'] ?? [], $input['sidebar_layout_types'] ?? [], ['name', 'preview', 'meta']);
 
     $form_names = [];
     $fn_keys = $input['form_names_keys'] ?? [];
@@ -168,14 +174,124 @@ function evk_inbox_mark_unread(array $ids): void {
 }
 
 function evk_inbox_format_date(string $dt): string {
-    $ts   = strtotime($dt);
-    $diff = time() - $ts;
-    if ($diff < 60)        return 'Przed chwilą';
-    if ($diff < 3600)      return round($diff / 60) . ' min temu';
-    if ($diff < 86400)     return round($diff / 3600) . ' godz. temu';
-    if ($diff < 86400 * 2) return 'Wczoraj ' . date('H:i', $ts);
-    if ($diff < 86400 * 7) return date('j M', $ts);
-    return date('j M Y', $ts);
+    return date('j M Y', strtotime($dt));
+}
+
+/**
+ * Sanityzacja układu pól (nagłówek / sidebar) z równoległych tablic keys[]+types[].
+ */
+function evk_inbox_sanitize_layout($keys, $types, array $allowed): array {
+    $out = [];
+    if (!is_array($keys)) return $out;
+    foreach ($keys as $i => $k) {
+        $k = preg_replace('/[^a-z0-9_-]/i', '', sanitize_text_field(trim($k)));
+        if (!$k) continue;
+        $t = sanitize_key($types[$i] ?? $allowed[0]);
+        if (!in_array($t, $allowed, true)) $t = $allowed[0];
+        $out[] = ['key' => $k, 'type' => $t];
+    }
+    return $out;
+}
+
+/**
+ * Wartość pola po kluczu (pełnym lub krótkim bez prefiksu form-field-).
+ */
+function evk_inbox_value_by_key(array $fields, string $key): string {
+    if ($key === '') return '';
+    foreach ($fields as $k => $v) {
+        $short = preg_replace('/^form-field-/', '', $k);
+        if ($k === $key || $short === $key) return evk_inbox_extract_value($v);
+    }
+    return '';
+}
+
+/**
+ * Etykieta pola po kluczu (z danych Bricks lub konfiguracji).
+ */
+function evk_inbox_label_for_key(array $fields, string $key, array $s): string {
+    foreach ($fields as $k => $v) {
+        $short = preg_replace('/^form-field-/', '', $k);
+        if ($k === $key || $short === $key) return evk_inbox_bricks_label($k, $v, $s);
+    }
+    return evk_inbox_field_label($key, $s);
+}
+
+/**
+ * Temat wiadomości — skonfigurowane pole lub auto-detekcja (label/klucz: temat/subject/tytuł).
+ */
+function evk_inbox_get_subject(array $fields, array $s): string {
+    if (!empty($s['subject_field'])) {
+        $v = evk_inbox_value_by_key($fields, $s['subject_field']);
+        if (trim($v)) return $v;
+    }
+    $hints = ['temat', 'subject', 'tytul', 'title'];
+    foreach ($fields as $k => $v) {
+        $label = (is_array($v) && !empty($v['name'])) ? $v['name'] : '';
+        $short = preg_replace('/^form-field-/', '', $k);
+        $hay   = mb_strtolower(remove_accents($label . ' ' . $short));
+        foreach ($hints as $h) {
+            if (mb_strpos($hay, $h) !== false) {
+                $val = evk_inbox_extract_value($v);
+                if (trim($val)) return $val;
+            }
+        }
+    }
+    return '';
+}
+
+/**
+ * Buduje dane sidebaru: nazwa (pogrubiona) + linie (preview/meta).
+ * Pusty sidebar_layout → fallback do auto-nazwy + podglądu.
+ */
+function evk_inbox_build_sidebar(array $fields, array $s): array {
+    $layout = $s['sidebar_layout'] ?? [];
+    $name   = '';
+    $lines  = [];
+    foreach ($layout as $row) {
+        $val = evk_inbox_value_by_key($fields, $row['key']);
+        if (!trim($val)) continue;
+        if ($row['type'] === 'name' && $name === '') {
+            $name = $val;
+        } else {
+            $lines[] = ['text' => mb_substr($val, 0, 120), 'type' => $row['type']];
+        }
+    }
+    if ($name === '') $name = evk_inbox_get_name($fields, $s);
+    if (empty($layout)) {
+        $prev = evk_inbox_get_preview($fields, $s);
+        if (trim($prev) !== '' && $prev !== "—") {
+            $lines[] = ['text' => $prev, 'type' => 'preview'];
+        }
+    }
+    return ['name' => $name, 'lines' => $lines];
+}
+
+/**
+ * Buduje nagłówek detalu: tytuł + podtytuł (temat) + linie meta.
+ * Pusty header_layout → auto-nazwa jako tytuł + auto-temat jako podtytuł.
+ */
+function evk_inbox_build_header(array $fields, array $s): array {
+    $layout   = $s['header_layout'] ?? [];
+    $title    = '';
+    $subtitle = '';
+    $lines    = [];
+    foreach ($layout as $row) {
+        $val = evk_inbox_value_by_key($fields, $row['key']);
+        if (!trim($val)) continue;
+        if ($row['type'] === 'title' && $title === '') {
+            $title = $val;
+        } elseif ($row['type'] === 'subtitle' && $subtitle === '') {
+            $subtitle = $val;
+        } else {
+            $lines[] = [
+                'label' => evk_inbox_label_for_key($fields, $row['key'], $s),
+                'value' => $val,
+            ];
+        }
+    }
+    if ($title === '')    $title = evk_inbox_get_name($fields, $s);
+    if ($subtitle === '') $subtitle = evk_inbox_get_subject($fields, $s);
+    return ['title' => $title, 'subtitle' => $subtitle, 'lines' => $lines];
 }
 
 function evk_inbox_field_label(string $key, array $s): string {
@@ -206,7 +322,7 @@ function evk_inbox_render_template(string $tpl, array $raw_fields, bool $raw_out
         $output = str_replace('{{' . $k . '}}', $v, $output);
     }
     if ($raw_output) return $output; // dla get_name — bez escape
-    return nl2br(esc_html($output));
+    return esc_html($output);
 }
 
 function evk_inbox_get_preview(array $fields, array $s = []): string {
@@ -388,13 +504,14 @@ add_action('wp_ajax_evk_inbox_list', function () {
     foreach ($rows as $row) {
         $fields  = json_decode($row->form_data, true) ?: [];
         $form_label = $s['form_names'][$row->form_id] ?? $row->form_id;
+        $sb         = evk_inbox_build_sidebar($fields, $s);
         $items[] = [
             'id'         => (int) $row->id,
             'form_id'    => $row->form_id,
             'form_label' => $form_label,
-            'name'       => evk_inbox_get_name($fields, $s),
+            'name'       => $sb['name'],
+            'lines'      => $sb['lines'],
             'email'      => evk_inbox_find_email($fields, $s['email_field']),
-            'preview'    => evk_inbox_get_preview($fields, $s),
             'date'       => evk_inbox_format_date($row->created_at),
             'is_read'    => in_array((int) $row->id, $read, true),
         ];
@@ -440,6 +557,7 @@ add_action('wp_ajax_evk_inbox_detail', function () {
 
     $has_tpl  = !empty($s['message_template']);
     $rendered = $has_tpl ? evk_inbox_render_template($s['message_template'], $fields) : '';
+    $hdr      = evk_inbox_build_header($fields, $s);
 
     wp_send_json_success([
         'id'         => (int) $row->id,
@@ -449,7 +567,9 @@ add_action('wp_ajax_evk_inbox_detail', function () {
         'has_template' => $has_tpl,
         'rendered'     => $rendered,
         'email'        => evk_inbox_find_email($fields, $s['email_field']),
-        'name'         => evk_inbox_get_name($fields, $s),
+        'name'         => $hdr['title'],
+        'subtitle'     => $hdr['subtitle'],
+        'header_lines' => $hdr['lines'],
         'meta'         => [
             'date'     => date_i18n('j F Y, H:i', strtotime($row->created_at)),
             'ip'       => $row->ip       ?? '',

@@ -140,8 +140,13 @@ $table_ok   = evk_inbox_table_exists();
 .evk-inbox-btn-ghost { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
 .evk-inbox-btn-ghost:hover { background: #e2e8f0; border-color: #cbd5e1; color: #1e293b; }
 .evk-inbox-btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
-.evk-inbox-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-.evk-inbox-btn-primary:hover { background: #1d4ed8; }
+.evk-inbox-btn-primary,
+a.evk-inbox-btn-primary,
+a.evk-inbox-btn-primary:hover,
+a.evk-inbox-btn-primary:focus,
+a.evk-inbox-btn-primary:visited { background: #2563eb; border-color: #2563eb; color: #fff; }
+.evk-inbox-btn-primary:hover, a.evk-inbox-btn-primary:hover { background: #1d4ed8; }
+.evk-inbox-btn-primary .dashicons { color: #fff; }
 .evk-inbox-btn-danger { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 .evk-inbox-btn-danger:hover { background: #fee2e2; }
 .evk-inbox-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
@@ -203,6 +208,9 @@ $table_ok   = evk_inbox_table_exists();
 .evk-inbox-item-preview {
     font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.evk-inbox-item-meta {
+    font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+}
 
 /* PAGINATION */
 .evk-inbox-pagination {
@@ -244,6 +252,12 @@ $table_ok   = evk_inbox_table_exists();
     font-size: 12px; color: #2563eb; background: #eff6ff;
     border-radius: 4px; padding: 2px 8px; display: inline-block;
 }
+.evk-inbox-detail-subtitle {
+    font-size: 14px; font-weight: 500; color: #334155; margin: 0 0 8px; line-height: 1.4;
+}
+.evk-inbox-detail-tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.evk-inbox-hline { font-size: 12px; color: #475569; margin-top: 6px; line-height: 1.4; }
+.evk-inbox-hline-label { color: #94a3b8; font-weight: 600; }
 .evk-inbox-detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 .evk-inbox-meta-bar {
@@ -366,7 +380,7 @@ $table_ok   = evk_inbox_table_exists();
                             <span class="evk-inbox-item-date">${esc(item.date)}</span>
                         </div>
                         <div class="evk-inbox-item-form">${esc(item.form_label || item.form_id)}</div>
-                        <div class="evk-inbox-item-preview">${esc(item.preview)}</div>
+                        ${(item.lines || []).map(function(l){ return '<div class="evk-inbox-item-' + (l.type === 'meta' ? 'meta' : 'preview') + '">' + esc(l.text) + '</div>'; }).join('')}
                     </div>
                 </div>`;
             });
@@ -435,12 +449,24 @@ $table_ok   = evk_inbox_table_exists();
                 ? `<a href="mailto:${esc(d.email)}" class="evk-inbox-btn evk-inbox-btn-primary"><span class="dashicons dashicons-email"></span> Odpowiedz</a>`
                 : '';
 
+            const subtitleHtml = d.subtitle
+                ? `<div class="evk-inbox-detail-subtitle">${esc(d.subtitle)}</div>`
+                : '';
+            let headerLinesHtml = '';
+            (d.header_lines || []).forEach(function(l) {
+                headerLinesHtml += `<div class="evk-inbox-hline"><span class="evk-inbox-hline-label">${esc(l.label)}</span> ${esc(l.value)}</div>`;
+            });
+
             detail.innerHTML = `
                 <div class="evk-inbox-detail-header">
                     <div class="evk-inbox-detail-title">
                         <h2>${esc(d.name)}</h2>
-                        <span class="evk-inbox-meta-form">${esc(d.form_label || d.form_id)}</span>
-                        ${d.email ? `<span style="font-size:12px;color:#64748b;margin-left:8px;">${esc(d.email)}</span>` : ''}
+                        ${subtitleHtml}
+                        <div class="evk-inbox-detail-tags">
+                            <span class="evk-inbox-meta-form">${esc(d.form_label || d.form_id)}</span>
+                            ${d.email ? `<span style="font-size:12px;color:#64748b;">${esc(d.email)}</span>` : ''}
+                        </div>
+                        ${headerLinesHtml}
                     </div>
                     <div class="evk-inbox-detail-actions">
                         ${replyBtn}

@@ -42,8 +42,8 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 <div class="evo-info-box" style="border-color:#86efac;background:#f0fdf4;margin-top:16px;">
     <span class="dashicons dashicons-yes-alt" style="color:#16a34a;"></span>
     <div>Moduł aktywny.
-        <a href="<?php echo esc_url($inbox_url); ?>" class="button button-secondary" style="margin-left:10px;">
-            <span class="dashicons dashicons-email-alt" style="font-size:14px;vertical-align:middle;margin-right:4px;line-height:1.6;"></span>
+        <a href="<?php echo esc_url($inbox_url); ?>" class="button button-secondary" style="margin-left:10px;display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+            <span class="dashicons dashicons-email-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Otwórz skrzynkę
         </a>
     </div>
@@ -89,6 +89,11 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
             <input type="text" name="evk_forminbox[preview_field]" value="<?php echo esc_attr($fi['preview_field'] ?? ''); ?>" placeholder="np. fonlfr (Temat)" style="max-width:200px;">
             <div class="evo-desc">Treść tego pola pojawia się pod nazwą w liście. Jeśli puste — pierwsze pole.</div>
         </div>
+        <div class="evo-field" style="margin:0;">
+            <label>Klucz pola tematu (nagłówek)</label>
+            <input type="text" name="evk_forminbox[subject_field]" value="<?php echo esc_attr($fi['subject_field'] ?? ''); ?>" placeholder="np. fonlfr" style="max-width:200px;">
+            <div class="evo-desc">Temat pokazany pod nazwą w nagłówku wiadomości. Jeśli puste — auto-detekcja (pole „Temat").</div>
+        </div>
     </div>
 
     <hr class="evo-divider">
@@ -105,13 +110,13 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <?php if ($has_tbl): ?>
-        <button type="button" id="evk-load-fields" class="button">
-            <span class="dashicons dashicons-update" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+        <button type="button" id="evk-load-fields" class="button" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+            <span class="dashicons dashicons-update" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Załaduj klucze z bazy
         </button>
         <?php endif; ?>
-        <button type="button" id="evk-add-field-row" class="button button-secondary">
-            <span class="dashicons dashicons-plus" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+        <button type="button" id="evk-add-field-row" class="button button-secondary" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+            <span class="dashicons dashicons-plus" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Dodaj wiersz
         </button>
         <span id="evk-fields-msg" style="font-size:12px;color:#6b7280;"></span>
@@ -170,6 +175,67 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         </table>
     </div>
 
+    <hr class="evo-divider" style="margin-top:24px;">
+    <p class="evo-section-title">Układ pól — nagłówek i lewy panel</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
+        <span class="dashicons dashicons-info"></span>
+        <div>
+            Ustaw które pola i w jakiej kolejności pojawiają się w <strong>nagłówku wiadomości</strong> oraz na <strong>liście (lewy panel)</strong>.
+            Lista pól pochodzi z mapowania powyżej. Strzałkami zmieniasz kolejność. Puste = autodetekcja.
+        </div>
+    </div>
+    <?php
+    $evk_type_labels = [
+        'header'  => ['title' => 'Tytuł (duży)', 'subtitle' => 'Podtytuł / temat', 'meta' => 'Meta (mała linia)'],
+        'sidebar' => ['name'  => 'Nazwa (pogrubiona)', 'preview' => 'Podgląd', 'meta' => 'Meta (mała linia)'],
+    ];
+    $evk_render_layout_rows = function ($rows, $group) use ($evk_type_labels) {
+        $tl = $evk_type_labels[$group];
+        if (empty($rows)) {
+            echo '<tr class="evk-layout-empty" data-group="' . esc_attr($group) . '"><td colspan="3" style="padding:12px 8px;color:#94a3b8;font-style:italic;">Brak pól — autodetekcja.</td></tr>';
+            return;
+        }
+        foreach ($rows as $r) {
+            $opts = '';
+            foreach ($tl as $tk => $tlbl) {
+                $opts .= '<option value="' . esc_attr($tk) . '"' . selected($r['type'], $tk, false) . '>' . esc_html($tlbl) . '</option>';
+            }
+            echo '<tr class="evk-layout-row" data-group="' . esc_attr($group) . '" style="border-bottom:1px solid #f1f5f9;">'
+                . '<td style="padding:5px 6px;"><select class="evk-key-select" name="evk_forminbox[' . esc_attr($group) . '_layout_keys][]" data-val="' . esc_attr($r['key']) . '" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;"></select></td>'
+                . '<td style="padding:5px 6px;width:150px;"><select name="evk_forminbox[' . esc_attr($group) . '_layout_types][]" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;">' . $opts . '</select></td>'
+                . '<td style="padding:5px 4px;width:78px;white-space:nowrap;text-align:right;">'
+                    . '<button type="button" class="evk-row-up button-link" title="W górę" style="padding:2px;"><span class="dashicons dashicons-arrow-up-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>'
+                    . '<button type="button" class="evk-row-down button-link" title="W dół" style="padding:2px;"><span class="dashicons dashicons-arrow-down-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>'
+                    . '<button type="button" class="evk-layout-remove button-link" title="Usuń" style="padding:2px;color:#ef4444;"><span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;"></span></button>'
+                . '</td></tr>';
+        }
+    };
+    ?>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+        <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <strong style="font-size:13px;color:#374151;">Nagłówek wiadomości</strong>
+                <button type="button" id="evk-add-header-row" class="button button-secondary" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+                    <span class="dashicons dashicons-plus" style="font-size:16px;width:16px;height:16px;line-height:1;"></span> Dodaj pole
+                </button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tbody id="evk-header-tbody"><?php $evk_render_layout_rows($fi['header_layout'] ?? [], 'header'); ?></tbody>
+            </table>
+        </div>
+        <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <strong style="font-size:13px;color:#374151;">Lewy panel (lista)</strong>
+                <button type="button" id="evk-add-sidebar-row" class="button button-secondary" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+                    <span class="dashicons dashicons-plus" style="font-size:16px;width:16px;height:16px;line-height:1;"></span> Dodaj pole
+                </button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tbody id="evk-sidebar-tbody"><?php $evk_render_layout_rows($fi['sidebar_layout'] ?? [], 'sidebar'); ?></tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- ── SZABLON WIADOMOŚCI ────────────────────────────────────────── -->
     <hr class="evo-divider" style="margin-top:24px;">
     <p class="evo-section-title">Nazwy formularzy</p>
@@ -181,13 +247,13 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         </div>
     </div>
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;">
-        <button type="button" id="evk-add-form-row" class="button button-secondary">
-            <span class="dashicons dashicons-plus" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+        <button type="button" id="evk-add-form-row" class="button button-secondary" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+            <span class="dashicons dashicons-plus" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Dodaj formularz
         </button>
         <?php if ($has_tbl): ?>
-        <button type="button" id="evk-load-forms" class="button">
-            <span class="dashicons dashicons-update" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+        <button type="button" id="evk-load-forms" class="button" style="display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
+            <span class="dashicons dashicons-update" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Załaduj ID z bazy
         </button>
         <?php endif; ?>
@@ -308,6 +374,7 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         $('#evk-vars-palette').html(chipsHtml);
 
         updatePreview(map);
+        refreshKeySelects();
     }
 
     // ── Podgląd szablonu z fikcyjnymi danymi ──────────────────
@@ -463,6 +530,78 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         });
     });
     <?php endif; ?>
+
+    // ── Układ pól (nagłówek / sidebar) ───────────────────────
+    var EVK_TYPE_OPTS = {
+        header:  [['title', 'Tytuł (duży)'], ['subtitle', 'Podtytuł / temat'], ['meta', 'Meta (mała linia)']],
+        sidebar: [['name', 'Nazwa (pogrubiona)'], ['preview', 'Podgląd'], ['meta', 'Meta (mała linia)']]
+    };
+
+    function fieldOptions(selected) {
+        var map  = getFieldMap();
+        var html = '<option value="">— wybierz pole —</option>';
+        Object.keys(map).forEach(function(k) {
+            var lbl = map[k] !== ('{{' + k + '}}') ? map[k] : k;
+            html += '<option value="' + esc(k) + '"' + (k === selected ? ' selected' : '') + '>' + esc(lbl) + ' (' + esc(k) + ')</option>';
+        });
+        if (selected && !map[selected]) {
+            html += '<option value="' + esc(selected) + '" selected>' + esc(selected) + '</option>';
+        }
+        return html;
+    }
+
+    function refreshKeySelects() {
+        $('.evk-key-select').each(function() {
+            var cur = $(this).val() || $(this).data('val') || '';
+            $(this).html(fieldOptions(cur));
+            if (cur) $(this).val(cur);
+        });
+    }
+
+    function layoutRow(group, key, type) {
+        var topts = EVK_TYPE_OPTS[group].map(function(o) {
+            return '<option value="' + o[0] + '"' + (o[0] === type ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('');
+        return $('<tr class="evk-layout-row" data-group="' + group + '" style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:5px 6px;"><select class="evk-key-select" name="evk_forminbox[' + group + '_layout_keys][]" data-val="' + esc(key || '') + '" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;"></select></td>' +
+            '<td style="padding:5px 6px;width:150px;"><select name="evk_forminbox[' + group + '_layout_types][]" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;">' + topts + '</select></td>' +
+            '<td style="padding:5px 4px;width:78px;white-space:nowrap;text-align:right;">' +
+                '<button type="button" class="evk-row-up button-link" title="W górę" style="padding:2px;"><span class="dashicons dashicons-arrow-up-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>' +
+                '<button type="button" class="evk-row-down button-link" title="W dół" style="padding:2px;"><span class="dashicons dashicons-arrow-down-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>' +
+                '<button type="button" class="evk-layout-remove button-link" title="Usuń" style="padding:2px;color:#ef4444;"><span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;"></span></button>' +
+            '</td></tr>');
+    }
+
+    function addLayoutRow(group) {
+        var tbody = $('#evk-' + group + '-tbody');
+        tbody.find('.evk-layout-empty').remove();
+        var row = layoutRow(group, '', EVK_TYPE_OPTS[group][0][0]);
+        tbody.append(row);
+        row.find('.evk-key-select').html(fieldOptions(''));
+    }
+
+    $('#evk-add-header-row').on('click',  function() { addLayoutRow('header'); });
+    $('#evk-add-sidebar-row').on('click', function() { addLayoutRow('sidebar'); });
+
+    $(document).on('click', '.evk-row-up', function() {
+        var tr = $(this).closest('tr'), prev = tr.prev('.evk-layout-row');
+        if (prev.length) prev.before(tr);
+    });
+    $(document).on('click', '.evk-row-down', function() {
+        var tr = $(this).closest('tr'), next = tr.next('.evk-layout-row');
+        if (next.length) next.after(tr);
+    });
+    $(document).on('click', '.evk-layout-remove', function() {
+        var tbody = $(this).closest('tbody');
+        var group = tbody.attr('id').replace('evk-', '').replace('-tbody', '');
+        $(this).closest('tr').remove();
+        if (!tbody.find('.evk-layout-row').length) {
+            tbody.append('<tr class="evk-layout-empty" data-group="' + group + '"><td colspan="3" style="padding:12px 8px;color:#94a3b8;font-style:italic;">Brak pól — autodetekcja.</td></tr>');
+        }
+    });
+
+    // Wypełnij selecty kluczy na starcie (mapowanie już w DOM)
+    refreshKeySelects();
 
 })(jQuery);
 </script>

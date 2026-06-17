@@ -125,7 +125,7 @@ function evoke_one_render_settings(): void {
         'narzedzia'      => ['label' => 'Narzędzia',       'icon' => 'dashicons-admin-tools'],
         'admin_panel'    => ['label' => 'Admin',           'icon' => 'dashicons-admin-settings'],
         'newsletter'     => ['label' => 'Newsletter',      'icon' => 'dashicons-email-alt'],
-        'forminbox'      => ['label' => 'Skrzynka form.',   'icon' => 'dashicons-email'],
+        'forminbox'      => ['label' => 'Wiadomości',      'icon' => 'dashicons-email'],
     ];
 
     if (!array_key_exists($tab, $tabs)) $tab = 'wydajnosc';
