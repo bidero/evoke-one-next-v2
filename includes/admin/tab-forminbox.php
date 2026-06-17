@@ -1,11 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 /**
- * Evoke ONE — Tab: Skrzynka wiadomości (ustawienia modułu)
+ * Evoke ONE — Tab: Skrzynka wiadomości (ustawienia)
  */
 
-$fi     = evk_inbox_get_settings();
-$nonce  = wp_create_nonce('evk_inbox_nonce');
+$fi      = evk_inbox_get_settings();
+$nonce   = wp_create_nonce('evk_inbox_nonce');
 $has_tbl = evk_inbox_table_exists();
 $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 ?>
@@ -35,16 +35,13 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 <?php if (!$has_tbl): ?>
 <div class="evo-info-box" style="border-color:#fde68a;background:#fffbeb;margin-top:16px;">
     <span class="dashicons dashicons-warning" style="color:#d97706;"></span>
-    <div>
-        Tabela zgłoszeń Bricks nie istnieje. Przejdź do <strong>Bricks → Ustawienia → Ogólne</strong> i włącz
-        <em>„Zapisuj zgłoszenia formularzy"</em>, a następnie w każdym formularzu dodaj akcję <em>„Save Submission"</em>.
-    </div>
+    <div>Tabela zgłoszeń Bricks nie istnieje. Przejdź do <strong>Bricks → Ustawienia → Ogólne</strong> i włącz
+    <em>„Zapisuj zgłoszenia formularzy"</em>, a następnie w każdym formularzu dodaj akcję <em>„Save Submission"</em>.</div>
 </div>
 <?php elseif (!empty($fi['enabled'])): ?>
 <div class="evo-info-box" style="border-color:#86efac;background:#f0fdf4;margin-top:16px;">
     <span class="dashicons dashicons-yes-alt" style="color:#16a34a;"></span>
-    <div>
-        Moduł aktywny.
+    <div>Moduł aktywny.
         <a href="<?php echo esc_url($inbox_url); ?>" class="button button-secondary" style="margin-left:10px;">
             <span class="dashicons dashicons-email-alt" style="font-size:14px;vertical-align:middle;margin-right:4px;line-height:1.6;"></span>
             Otwórz skrzynkę
@@ -53,139 +50,316 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
 </div>
 <?php endif; ?>
 
-<!-- USTAWIENIA -->
 <form method="post" action="options.php" style="margin-top:24px;">
     <?php settings_fields(EVK_INBOX_OPTION . '_group'); ?>
+    <input type="hidden" name="evk_forminbox[enabled]" value="<?php echo (int)!empty($fi['enabled']); ?>">
 
+    <!-- ── MENU ─────────────────────────────────────────────────────── -->
     <p class="evo-section-title">Konfiguracja menu</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:24px;">
         <div class="evo-field" style="margin:0;">
             <label>Nazwa menu</label>
-            <input type="text" name="evk_forminbox[menu_label]"
-                   value="<?php echo esc_attr($fi['menu_label']); ?>"
-                   placeholder="Wiadomości">
-            <div class="evo-desc">Tekst wyświetlany w lewym menu WP.</div>
+            <input type="text" name="evk_forminbox[menu_label]" value="<?php echo esc_attr($fi['menu_label']); ?>" placeholder="Wiadomości">
         </div>
         <div class="evo-field" style="margin:0;">
             <label>Ikona (Dashicons)</label>
-            <input type="text" name="evk_forminbox[menu_icon]"
-                   value="<?php echo esc_attr($fi['menu_icon']); ?>"
-                   placeholder="dashicons-email-alt">
-            <div class="evo-desc"><a href="https://developer.wordpress.org/resource/dashicons/" target="_blank">Lista Dashicons ↗</a></div>
+            <input type="text" name="evk_forminbox[menu_icon]" value="<?php echo esc_attr($fi['menu_icon']); ?>" placeholder="dashicons-email-alt">
+            <div class="evo-desc"><a href="https://developer.wordpress.org/resource/dashicons/" target="_blank">Lista ↗</a></div>
         </div>
         <div class="evo-field" style="margin:0;">
             <label>Pozycja w menu</label>
-            <input type="number" name="evk_forminbox[menu_position]"
-                   value="<?php echo esc_attr($fi['menu_position']); ?>"
-                   min="1" max="100" style="max-width:80px;">
-            <div class="evo-desc">Liczba — im mniejsza, tym wyżej. Domyślnie: 25.</div>
+            <input type="number" name="evk_forminbox[menu_position]" value="<?php echo esc_attr($fi['menu_position']); ?>" min="1" max="100" style="max-width:80px;">
         </div>
         <div class="evo-field" style="margin:0;">
             <label>Wiadomości na stronę</label>
-            <input type="number" name="evk_forminbox[per_page]"
-                   value="<?php echo esc_attr($fi['per_page']); ?>"
-                   min="5" max="100" style="max-width:80px;">
+            <input type="number" name="evk_forminbox[per_page]" value="<?php echo esc_attr($fi['per_page']); ?>" min="5" max="100" style="max-width:80px;">
+        </div>
+        <div class="evo-field" style="margin:0;">
+            <label>Klucz pola e-mail</label>
+            <input type="text" name="evk_forminbox[email_field]" value="<?php echo esc_attr($fi['email_field']); ?>" placeholder="np. 436dec" style="max-width:160px;">
+            <div class="evo-desc">Auto-detect jeśli puste.</div>
         </div>
     </div>
 
     <hr class="evo-divider">
-    <p class="evo-section-title">Konfiguracja pól</p>
-    <div class="evo-info-box" style="margin-bottom:16px;">
+
+    <!-- ── MAPOWANIE PÓŁ ────────────────────────────────────────────── -->
+    <p class="evo-section-title">Mapowanie pól</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
         <span class="dashicons dashicons-info"></span>
         <div>
-            Przypisz etykiety do kluczy pól Bricks (np. <code>form-field-abc</code> → <em>Imię i nazwisko</em>).
-            Pola bez etykiety są wyświetlane z automatycznie wygenerowaną nazwą.
-            Pola oznaczone jako <em>ukryte</em> nie pojawiają się w podglądzie ani eksporcie.
+            Przypisz czytelne nazwy do kluczy pól Bricks. Klucz to krótki identyfikator z Bricks (np. <code>fonlfr</code>, <code>436dec</code>).
+            Użyj <strong>Załaduj z bazy</strong> aby auto-wykryć klucze z istniejących zgłoszeń, lub dodaj ręcznie.
         </div>
     </div>
 
-    <div class="evo-field" style="margin-bottom:16px;">
-        <label>Klucz pola e-mail (auto-detect jeśli puste)</label>
-        <input type="text" name="evk_forminbox[email_field]"
-               value="<?php echo esc_attr($fi['email_field']); ?>"
-               placeholder="np. form-field-abc123" style="max-width:260px;">
-        <div class="evo-desc">Używany do przycisku „Odpowiedz". Jeśli puste — auto-wykrywanie po formacie e-mail.</div>
-    </div>
-
-    <div id="evk-fields-config" data-nonce="<?php echo esc_attr($nonce); ?>">
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <?php if ($has_tbl): ?>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-            <button type="button" id="evk-load-fields" class="button">
-                <span class="dashicons dashicons-update" style="font-size:14px;vertical-align:middle;line-height:1.6;"></span>
-                Załaduj klucze pól z bazy
-            </button>
-            <span id="evk-fields-status" style="font-size:12px;color:#6b7280;"></span>
-        </div>
-        <div id="evk-fields-table"></div>
-        <?php else: ?>
-        <div class="evo-info-box" style="border-color:#e2e8f0;">
-            <span class="dashicons dashicons-info"></span>
-            <div>Konfiguracja pól dostępna po włączeniu zapisywania zgłoszeń w Bricks.</div>
-        </div>
+        <button type="button" id="evk-load-fields" class="button">
+            <span class="dashicons dashicons-update" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+            Załaduj klucze z bazy
+        </button>
         <?php endif; ?>
+        <button type="button" id="evk-add-field-row" class="button button-secondary">
+            <span class="dashicons dashicons-plus" style="font-size:14px;vertical-align:middle;line-height:1.8;margin-right:3px;"></span>
+            Dodaj wiersz
+        </button>
+        <span id="evk-fields-msg" style="font-size:12px;color:#6b7280;"></span>
     </div>
 
-    <!-- Zachowaj istniejące etykiety jako hidden inputs (nadpisywane przez JS) -->
-    <?php foreach ($fi['field_labels'] as $fk => $fl): ?>
-    <input type="hidden" name="evk_forminbox[field_labels][<?php echo esc_attr($fk); ?>]" value="<?php echo esc_attr($fl); ?>" class="evk-saved-label" data-key="<?php echo esc_attr($fk); ?>">
-    <?php endforeach; ?>
-    <?php foreach ($fi['hidden_fields'] as $fk): ?>
-    <input type="hidden" name="evk_forminbox[hidden_fields][]" value="<?php echo esc_attr($fk); ?>" class="evk-saved-hidden" data-key="<?php echo esc_attr($fk); ?>">
-    <?php endforeach; ?>
+    <div id="evk-fields-table-wrap">
+        <table id="evk-fields-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+                <tr style="border-bottom:2px solid #e2e8f0;">
+                    <th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;width:220px;">Klucz Bricks</th>
+                    <th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;">Twoja nazwa</th>
+                    <th style="text-align:center;padding:8px 10px;color:#6b7280;font-weight:600;width:60px;">Ukryj</th>
+                    <th style="width:36px;"></th>
+                </tr>
+            </thead>
+            <tbody id="evk-fields-tbody">
+                <?php
+                // Renderuj zapisane mapowania
+                $saved_labels = $fi['field_labels'] ?? [];
+                $saved_hidden = $fi['hidden_fields'] ?? [];
+                if (!empty($saved_labels)):
+                    foreach ($saved_labels as $fk => $fl):
+                        $is_hidden = in_array($fk, $saved_hidden, true);
+                ?>
+                <tr class="evk-field-row" style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:6px 10px;">
+                        <input type="text" name="evk_forminbox[field_labels_keys][]"
+                               value="<?php echo esc_attr($fk); ?>"
+                               placeholder="klucz" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;">
+                    </td>
+                    <td style="padding:6px 10px;">
+                        <input type="text" name="evk_forminbox[field_labels_vals][]"
+                               value="<?php echo esc_attr($fl); ?>"
+                               placeholder="Twoja nazwa" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;">
+                    </td>
+                    <td style="padding:6px 10px;text-align:center;">
+                        <input type="checkbox" name="evk_forminbox[hidden_fields][]"
+                               value="<?php echo esc_attr($fk); ?>" <?php checked($is_hidden); ?>
+                               class="evk-hidden-cb">
+                    </td>
+                    <td style="padding:6px 4px;text-align:center;">
+                        <button type="button" class="evk-remove-row button-link" style="color:#ef4444;padding:2px 4px;" title="Usuń wiersz">
+                            <span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php else: ?>
+                <tr class="evk-field-row-empty" id="evk-no-rows">
+                    <td colspan="4" style="padding:16px 10px;color:#94a3b8;font-style:italic;text-align:center;">
+                        Brak mapowań. Załaduj klucze z bazy lub dodaj ręcznie.
+                    </td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 
-    <div class="evo-save-bar" style="margin-top:24px;">
+    <!-- ── SZABLON WIADOMOŚCI ────────────────────────────────────────── -->
+    <hr class="evo-divider" style="margin-top:24px;">
+    <p class="evo-section-title">Szablon wyświetlania wiadomości</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
+        <span class="dashicons dashicons-info"></span>
+        <div>
+            Zdefiniuj jak wyglądać będzie wiadomość w podglądzie. Użyj <code>{{klucz}}</code> aby wstawić wartość pola (krótki klucz Bricks, np. <code>{{fonlfr}}</code>).
+            Jeśli szablon jest pusty — pola wyświetlane są automatycznie jako karty.
+            <br>Dostępne zmienne: <span id="evk-available-vars" style="font-family:monospace;font-size:11px;color:#2563eb;"></span>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+        <div class="evo-field" style="margin:0;">
+            <label>Szablon</label>
+            <textarea id="evk-template-editor" name="evk_forminbox[message_template]"
+                      rows="14"
+                      style="width:100%;font-family:monospace;font-size:12px;line-height:1.6;resize:vertical;border:1px solid #d1d5db;border-radius:6px;padding:10px;"
+                      placeholder="Temat: {{fonlfr}}&#10;Od: {{imie}} {{nazwisko}}&#10;E-mail: {{email}}&#10;&#10;Wiadomość:&#10;{{tresc}}&#10;---&#10;Wiadomość z formularza."><?php echo esc_textarea($fi['message_template'] ?? ''); ?></textarea>
+            <div class="evo-desc">Kliknij na zmienną po prawej aby wstawić do kursora.</div>
+        </div>
+        <div class="evo-field" style="margin:0;">
+            <label>Podgląd (z fikcyjnymi danymi)</label>
+            <div id="evk-template-preview"
+                 style="width:100%;min-height:220px;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.7;background:#f8fafc;font-family:monospace;white-space:pre-wrap;word-break:break-word;color:#374151;box-sizing:border-box;"></div>
+            <div class="evo-desc">Rzeczywiste dane zobaczysz po otwarciu wiadomości w skrzynce.</div>
+        </div>
+    </div>
+
+    <div id="evk-vars-palette" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;"></div>
+
+    <div class="evo-save-bar">
         <?php submit_button('Zapisz ustawienia', 'primary', 'submit', false); ?>
     </div>
 </form>
 
+<style>
+.evk-field-row:hover { background: #f8fafc; }
+.evk-var-chip {
+    display: inline-block; padding: 3px 8px; background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 4px; font-size: 11px; font-family: monospace; color: #1d4ed8;
+    cursor: pointer; transition: background .12s;
+}
+.evk-var-chip:hover { background: #dbeafe; }
+</style>
+
 <script>
 (function($) {
-    var NONCE   = <?php echo json_encode($nonce); ?>;
-    var SAVED_LABELS  = <?php echo json_encode($fi['field_labels']); ?>;
-    var SAVED_HIDDEN  = <?php echo json_encode($fi['hidden_fields']); ?>;
+    var NONCE = <?php echo json_encode($nonce); ?>;
 
-    document.getElementById('evk-load-fields') && document.getElementById('evk-load-fields').addEventListener('click', function() {
-        $('#evk-fields-status').text('Ładowanie…');
+    // ── Mapa klucz → etykieta (live z tabeli) ────────────────
+    function getFieldMap() {
+        var map = {};
+        $('#evk-fields-tbody .evk-field-row').each(function() {
+            var key = $(this).find('input[name*="field_labels_keys"]').val().trim();
+            var val = $(this).find('input[name*="field_labels_vals"]').val().trim();
+            if (key) map[key] = val || ('{{' + key + '}}');
+        });
+        return map;
+    }
+
+    // ── Aktualizuj dostępne zmienne i paletę ─────────────────
+    function updateVarPalette() {
+        var map = getFieldMap();
+        var keys = Object.keys(map);
+
+        // Info bar
+        if (keys.length) {
+            $('#evk-available-vars').text(keys.map(function(k){ return '{{' + k + '}}'; }).join('  '));
+        } else {
+            $('#evk-available-vars').text('(brak mapowań — dodaj pola powyżej)');
+        }
+
+        // Paleta chipów
+        var chipsHtml = keys.length
+            ? keys.map(function(k) {
+                var lbl = map[k] !== ('{{' + k + '}}') ? map[k] : k;
+                return '<span class="evk-var-chip" data-var="{{' + k + '}}" title="' + lbl + '">{{' + k + '}}</span>';
+              }).join('')
+            : '<span style="font-size:12px;color:#94a3b8;">Dodaj mapowania pól aby zobaczyć dostępne zmienne.</span>';
+        $('#evk-vars-palette').html(chipsHtml);
+
+        updatePreview(map);
+    }
+
+    // ── Podgląd szablonu z fikcyjnymi danymi ──────────────────
+    function updatePreview(map) {
+        var tpl = $('#evk-template-editor').val();
+        if (!tpl) { $('#evk-template-preview').text('(brak szablonu)'); return; }
+        var map2 = map || getFieldMap();
+        var out = tpl;
+        $.each(map2, function(k, label) {
+            var fakeVal = label !== ('{{' + k + '}}') ? '[' + label + ']' : '[wartość ' + k + ']';
+            out = out.split('{{' + k + '}}').join(fakeVal);
+        });
+        // Pozostałe {{...}} oznacz jako nieznane
+        out = out.replace(/\{\{([^}]+)\}\}/g, '[???]');
+        $('#evk-template-preview').text(out);
+    }
+
+    // ── Wstaw zmienną do kursora w textarea ──────────────────
+    $(document).on('click', '.evk-var-chip', function() {
+        var varStr = $(this).data('var');
+        var ta     = document.getElementById('evk-template-editor');
+        var start  = ta.selectionStart;
+        var end    = ta.selectionEnd;
+        var val    = ta.value;
+        ta.value   = val.substring(0, start) + varStr + val.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + varStr.length;
+        ta.focus();
+        updatePreview();
+    });
+
+    // ── Dodaj pusty wiersz ────────────────────────────────────
+    function addRow(key, label, hidden) {
+        key   = key   || '';
+        label = label || '';
+        $('#evk-no-rows').remove();
+        var hidCk = hidden ? 'checked' : '';
+        // Aktualizuj hidden checkbox name przy ukrywaniu
+        var row = $('<tr class="evk-field-row" style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:6px 10px;">' +
+                '<input type="text" name="evk_forminbox[field_labels_keys][]" value="' + esc(key) + '" placeholder="klucz" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;font-family:monospace;">' +
+            '</td>' +
+            '<td style="padding:6px 10px;">' +
+                '<input type="text" name="evk_forminbox[field_labels_vals][]" value="' + esc(label) + '" placeholder="Twoja nazwa" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;">' +
+            '</td>' +
+            '<td style="padding:6px 10px;text-align:center;">' +
+                '<input type="checkbox" name="evk_forminbox[hidden_fields][]" value="" class="evk-hidden-cb" ' + hidCk + '>' +
+            '</td>' +
+            '<td style="padding:6px 4px;text-align:center;">' +
+                '<button type="button" class="evk-remove-row button-link" style="color:#ef4444;padding:2px 4px;" title="Usuń wiersz">' +
+                    '<span class="dashicons dashicons-no-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>' +
+                '</button>' +
+            '</td>' +
+        '</tr>');
+        $('#evk-fields-tbody').append(row);
+        syncHiddenCbValues();
+        updateVarPalette();
+    }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // Hidden checkbox value musi być równy kluczowi z pola obok
+    function syncHiddenCbValues() {
+        $('#evk-fields-tbody .evk-field-row').each(function() {
+            var key = $(this).find('input[name*="field_labels_keys"]').val().trim();
+            $(this).find('.evk-hidden-cb').val(key);
+        });
+    }
+
+    // ── Zdarzenia tabeli ──────────────────────────────────────
+    $('#evk-add-field-row').on('click', function() { addRow(); });
+
+    $(document).on('click', '.evk-remove-row', function() {
+        $(this).closest('tr').remove();
+        if ($('#evk-fields-tbody .evk-field-row').length === 0) {
+            $('#evk-fields-tbody').append('<tr class="evk-field-row-empty" id="evk-no-rows"><td colspan="4" style="padding:16px 10px;color:#94a3b8;font-style:italic;text-align:center;">Brak mapowań.</td></tr>');
+        }
+        updateVarPalette();
+    });
+
+    $(document).on('input', '#evk-fields-tbody input', function() {
+        syncHiddenCbValues();
+        updateVarPalette();
+    });
+
+    $(document).on('input', '#evk-template-editor', function() { updatePreview(); });
+
+    // ── Załaduj klucze z bazy ────────────────────────────────
+    <?php if ($has_tbl): ?>
+    $('#evk-load-fields').on('click', function() {
+        $('#evk-fields-msg').text('Ładowanie…');
         $.get(window.ajaxurl, { action: 'evk_inbox_field_keys', nonce: NONCE }, function(r) {
-            if (!r.success) { $('#evk-fields-status').text('Błąd'); return; }
-            var keys = r.data.keys;
-            if (!keys.length) { $('#evk-fields-status').text('Brak kluczy pól.'); return; }
-            $('#evk-fields-status').text(keys.length + ' kluczy wykrytych.');
-
-            // Merge saved labels
-            keys.forEach(function(k) {
-                if (SAVED_LABELS[k.key]) k.label = SAVED_LABELS[k.key];
-                if (SAVED_HIDDEN.includes(k.key)) k.hidden = true;
+            if (!r.success) { $('#evk-fields-msg').text('Błąd.'); return; }
+            var keys     = r.data.keys;
+            var existing = {};
+            // Zachowaj istniejące mapowania
+            $('#evk-fields-tbody .evk-field-row').each(function() {
+                var k = $(this).find('input[name*="field_labels_keys"]').val().trim();
+                var v = $(this).find('input[name*="field_labels_vals"]').val().trim();
+                if (k) existing[k] = v;
             });
-
-            var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-            html += '<thead><tr style="border-bottom:2px solid #e2e8f0;">';
-            html += '<th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;width:200px;">Klucz pola</th>';
-            html += '<th style="text-align:left;padding:8px 10px;color:#6b7280;font-weight:600;">Etykieta (wyświetlana)</th>';
-            html += '<th style="text-align:center;padding:8px 10px;color:#6b7280;font-weight:600;width:80px;">Ukryj</th>';
-            html += '</tr></thead><tbody>';
-
+            // Dodaj brakujące klucze
+            var added = 0;
             keys.forEach(function(k) {
-                var hiddenChecked = k.hidden ? 'checked' : '';
-                html += `<tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:8px 10px;font-family:monospace;font-size:12px;color:#475569;">${k.key}</td>
-                    <td style="padding:6px 10px;">
-                        <input type="text" name="evk_forminbox[field_labels][${k.key}]" value="${k.label.replace(/"/g,'&quot;')}"
-                               placeholder="Automatyczna" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:13px;">
-                    </td>
-                    <td style="padding:6px 10px;text-align:center;">
-                        <input type="checkbox" name="evk_forminbox[hidden_fields][]" value="${k.key}" ${hiddenChecked}>
-                    </td>
-                </tr>`;
+                if (!existing[k.key]) {
+                    addRow(k.key, k.label !== k.key ? k.label : '', k.hidden);
+                    added++;
+                }
             });
-
-            html += '</tbody></table>';
-
-            // Remove previously injected saved inputs (JS will replace via form fields)
-            $('.evk-saved-label, .evk-saved-hidden').remove();
-
-            $('#evk-fields-table').html(html);
+            $('#evk-fields-msg').text(added ? added + ' nowych kluczy dodano.' : 'Brak nowych kluczy — wszystkie już skonfigurowane.');
         });
     });
+    <?php endif; ?>
+
+    // ── Init ─────────────────────────────────────────────────
+    // Zsynchronizuj wartości hidden checkbox (klucze z inputów)
+    syncHiddenCbValues();
+    updateVarPalette();
+
 })(jQuery);
 </script>

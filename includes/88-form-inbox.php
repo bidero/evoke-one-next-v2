@@ -21,7 +21,8 @@ function evk_inbox_defaults(): array {
         'per_page'      => 25,
         'field_labels'  => [],   // ['form-field-abc' => 'Imię']
         'hidden_fields' => [],   // ['form-field-xyz']
-        'email_field'   => '',   // klucz pola z e-mailem (auto-detect jeśli puste)
+        'email_field'      => '',   // klucz pola z e-mailem (auto-detect jeśli puste)
+        'message_template' => '',   // szablon z {{klucz}} placeholderami
     ];
 }
 
@@ -57,13 +58,28 @@ function evk_inbox_sanitize_settings($input): array {
     $c['menu_icon']     = sanitize_text_field($input['menu_icon']     ?? $d['menu_icon'])     ?: $d['menu_icon'];
     $c['menu_position'] = max(1, min(100, intval($input['menu_position'] ?? 25)));
     $c['per_page']      = max(5, min(100, intval($input['per_page']   ?? 25)));
-    $c['email_field']   = sanitize_key($input['email_field'] ?? '');
+    $c['email_field']      = sanitize_key($input['email_field'] ?? '');
+    $c['message_template'] = wp_kses_post($input['message_template'] ?? ''); // pozwala na encje HTML
 
+    // Mapowanie pól: dwie równoległe tablice keys[] + vals[]
     $labels = [];
-    if (!empty($input['field_labels']) && is_array($input['field_labels'])) {
+    $keys_arr = $input['field_labels_keys'] ?? [];
+    $vals_arr = $input['field_labels_vals'] ?? [];
+    if (is_array($keys_arr)) {
+        foreach ($keys_arr as $i => $k) {
+            $k = sanitize_text_field(trim($k));
+            $v = sanitize_text_field(trim($vals_arr[$i] ?? ''));
+            // Akceptuj alfanumeryczne + myślniki (krótkie klucze Bricks np. "fonlfr")
+            $k = preg_replace('/[^a-z0-9_-]/i', '', $k);
+            if ($k) $labels[$k] = $v; // wartość może być pusta (nie ma labell → auto)
+        }
+    }
+    // Fallback: stary format field_labels[key] => val (np. import)
+    if (empty($labels) && !empty($input['field_labels']) && is_array($input['field_labels'])) {
         foreach ($input['field_labels'] as $k => $v) {
-            $k = sanitize_key($k); $v = sanitize_text_field($v);
-            if ($k && $v) $labels[$k] = $v;
+            $k = sanitize_text_field(trim($k));
+            $k = preg_replace('/[^a-z0-9_-]/i', '', $k);
+            if ($k) $labels[$k] = sanitize_text_field($v);
         }
     }
     $c['field_labels'] = $labels;
@@ -71,11 +87,12 @@ function evk_inbox_sanitize_settings($input): array {
     $hidden = [];
     if (!empty($input['hidden_fields']) && is_array($input['hidden_fields'])) {
         foreach ($input['hidden_fields'] as $k) {
-            $k = sanitize_key($k);
+            $k = sanitize_text_field(trim($k));
+            $k = preg_replace('/[^a-z0-9_-]/i', '', $k);
             if ($k) $hidden[] = $k;
         }
     }
-    $c['hidden_fields'] = $hidden;
+    $c['hidden_fields'] = array_values(array_unique($hidden));
     return $c;
 }
 
@@ -144,9 +161,35 @@ function evk_inbox_format_date(string $dt): string {
 }
 
 function evk_inbox_field_label(string $key, array $s): string {
+    // Sprawdź pełny klucz
     if (!empty($s['field_labels'][$key])) return $s['field_labels'][$key];
-    $label = preg_replace('/^form-field-/', '', $key);
-    return ucwords(str_replace(['-', '_'], ' ', $label));
+    // Sprawdź krótki klucz (bez prefiksu form-field-)
+    $short = preg_replace('/^form-field-/', '', $key);
+    if (!empty($s['field_labels'][$short])) return $s['field_labels'][$short];
+    // Auto-generuj z krótkiego klucza
+    return ucwords(str_replace(['-', '_'], ' ', $short));
+}
+
+/**
+ * Renderuje szablon wiadomości — zastępuje {{klucz}} wartościami pól.
+ * Escape HTML wbudowany — bezpieczny output.
+ */
+function evk_inbox_render_template(string $tpl, array $raw_fields): string {
+    // Zbuduj mapę escaped_key => escaped_value (i skrócony klucz)
+    $map = [];
+    foreach ($raw_fields as $key => $value) {
+        $v = is_array($value) ? implode(', ', $value) : (string) $value;
+        $map[$key] = $v;
+        $short = preg_replace('/^form-field-/', '', $key);
+        if ($short !== $key) $map[$short] = $v;
+    }
+    // Podmień placeholdery w surowym szablonie
+    $output = $tpl;
+    foreach ($map as $k => $v) {
+        $output = str_replace('{{' . $k . '}}', $v, $output);
+    }
+    // Escape całości i zachowaj nowe linie
+    return nl2br(esc_html($output));
 }
 
 function evk_inbox_get_preview(array $fields): string {
@@ -295,13 +338,18 @@ add_action('wp_ajax_evk_inbox_detail', function () {
         $user_name = $u->display_name . ' (' . $u->user_email . ')';
     }
 
+    $has_tpl  = !empty($s['message_template']);
+    $rendered = $has_tpl ? evk_inbox_render_template($s['message_template'], $fields) : '';
+
     wp_send_json_success([
-        'id'     => (int) $row->id,
-        'form_id'=> $row->form_id,
-        'fields' => $display,
-        'email'  => evk_inbox_find_email($fields, $s['email_field']),
-        'name'   => evk_inbox_get_name($fields),
-        'meta'   => [
+        'id'           => (int) $row->id,
+        'form_id'      => $row->form_id,
+        'fields'       => $display,
+        'has_template' => $has_tpl,
+        'rendered'     => $rendered,
+        'email'        => evk_inbox_find_email($fields, $s['email_field']),
+        'name'         => evk_inbox_get_name($fields),
+        'meta'         => [
             'date'     => date_i18n('j F Y, H:i', strtotime($row->created_at)),
             'ip'       => $row->ip       ?? '',
             'browser'  => $row->browser  ?? '',

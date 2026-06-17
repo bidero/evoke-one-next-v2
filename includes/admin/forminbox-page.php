@@ -272,6 +272,13 @@ $table_ok   = evk_inbox_table_exists();
 }
 .evk-inbox-field.is-long { grid-column: 1 / -1; }
 
+/* RENDERED TEMPLATE */
+.evk-inbox-rendered {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 20px 24px; font-family: monospace; font-size: 13px; line-height: 1.8;
+    color: #1e293b; white-space: pre-wrap; word-break: break-word;
+}
+
 /* LOADING & EMPTY */
 .evk-inbox-loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
 .evk-inbox-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; color: #94a3b8; text-align: center; }
@@ -409,14 +416,20 @@ $table_ok   = evk_inbox_table_exists();
             if (d.meta.referrer) metaHtml += `<span><span class="dashicons dashicons-external"></span> <a href="${esc(d.meta.referrer)}" target="_blank" style="color:#2563eb;">${esc(d.meta.referrer.replace(/^https?:\/\//, '').substring(0, 60))}</a></span>`;
             if (d.meta.user)     metaHtml += `<span><span class="dashicons dashicons-admin-users"></span> ${esc(d.meta.user)}</span>`;
 
+            // Użyj szablonu jeśli dostępny, inaczej auto-karty
             let fieldsHtml = '';
-            d.fields.forEach(function(f) {
-                const isLong = f.value.length > 80 || f.value.includes('\n');
-                fieldsHtml += `<div class="evk-inbox-field ${isLong ? 'is-long' : ''}">
-                    <div class="evk-inbox-field-label">${esc(f.label)}</div>
-                    <div class="evk-inbox-field-value">${esc(f.value) || '<span style="color:#94a3b8;">—</span>'}</div>
-                </div>`;
-            });
+            if (d.has_template && d.rendered) {
+                fieldsHtml = `<div class="evk-inbox-rendered">${d.rendered}</div>`;
+            } else {
+                d.fields.forEach(function(f) {
+                    const isLong = f.value.length > 80 || f.value.includes('\n');
+                    fieldsHtml += `<div class="evk-inbox-field ${isLong ? 'is-long' : ''}">
+                        <div class="evk-inbox-field-label">${esc(f.label)}</div>
+                        <div class="evk-inbox-field-value">${esc(f.value) || '<span style="color:#94a3b8;">—</span>'}</div>
+                    </div>`;
+                });
+                fieldsHtml = `<div class="evk-inbox-fields">${fieldsHtml}</div>`;
+            }
 
             const replyBtn = d.email
                 ? `<a href="mailto:${esc(d.email)}" class="evk-inbox-btn evk-inbox-btn-primary"><span class="dashicons dashicons-email"></span> Odpowiedz</a>`
@@ -440,7 +453,7 @@ $table_ok   = evk_inbox_table_exists();
                     </div>
                 </div>
                 ${metaHtml ? `<div class="evk-inbox-meta-bar">${metaHtml}</div>` : ''}
-                <div class="evk-inbox-fields">${fieldsHtml}</div>
+                ${fieldsHtml}
             `;
         });
     }
