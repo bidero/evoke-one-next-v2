@@ -1,0 +1,475 @@
+/* Evoke One — Admin Panel Styles */
+
+#wpbody-content .wrap { max-width: 100%; }
+#wpcontent { padding-left: 12px; }
+#wpbody-content .wrap > h1 { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; font-size: 23px; }
+
+/* Tabs */
+.evo-tabs { display: flex; gap: 6px; padding: 6px; margin: 14px 0 0; border: 1px solid #d7dde7; border-radius: 10px 10px 0 0; background: #eef2f7; flex-wrap: wrap; }
+.evo-tab { border: 0; margin: 0; border-radius: 7px; padding: 9px 16px; color: #4b5563; background: transparent; font-size: 13px; font-weight: 500; text-decoration: none; transition: background .15s, color .15s, box-shadow .15s; display: flex; align-items: center; gap: 7px; }
+.evo-tab:hover { background: #fff; color: #1d4ed8; }
+.evo-tab.active { background: #fff; color: #111827; font-weight: 600; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.evo-tab .dashicons { font-size: 16px; width: 16px; height: 16px; line-height: 1; }
+
+/* Panel */
+.evo-panel { border: 1px solid #d7dde7; border-top: 0; border-radius: 0 0 10px 10px; padding: 28px 28px 24px; background: #fff; box-shadow: 0 12px 30px rgba(15,23,42,.06); }
+
+/* Status card */
+.evo-status-card { display: flex; align-items: center; gap: 20px; background: #f8fafc; border: 1px solid #d7dde7; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; }
+.evo-status-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.evo-status-icon.on  { background: #dcfce7; color: #16a34a; }
+.evo-status-icon.off { background: #f1f5f9; color: #94a3b8; }
+.evo-status-icon .dashicons { font-size: 24px; width: 24px; height: 24px; line-height: 1; }
+.evo-status-text h3 { margin: 0 0 3px; font-size: 15px; color: #111827; }
+.evo-status-text p  { margin: 0; font-size: 13px; color: #64748b; }
+.evo-status-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+
+/* Toggle switch */
+.evo-toggle { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
+.evo-toggle input { opacity: 0; width: 0; height: 0; }
+.evo-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; transition: .25s; border-radius: 26px; }
+.evo-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; transition: .25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.evo-toggle input:checked + .evo-slider { background: #16a34a; }
+.evo-toggle input:checked + .evo-slider:before { transform: translateX(22px); }
+.evo-toggle-label { font-size: 13px; font-weight: 500; color: #374151; }
+
+/* Section headings and fields */
+.evo-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #64748b; margin: 0 0 14px; }
+.evo-field { margin-bottom: 20px; }
+.evo-field label { display: block; font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 5px; }
+.evo-field .evo-desc { font-size: 12px; color: #6b7280; margin-top: 5px; line-height: 1.5; }
+.evo-field input[type=text],
+.evo-field input[type=number],
+.evo-field select,
+.evo-field textarea { border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #111827; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: border-color .15s, box-shadow .15s; }
+.evo-field input[type=text]:focus,
+.evo-field input[type=number]:focus,
+.evo-field select:focus,
+.evo-field textarea:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.evo-field input[type=text]   { width: 100%; max-width: 420px; }
+.evo-field input[type=number] { width: 90px; }
+.evo-field select             { min-width: 200px; }
+.evo-field textarea           { width: 100%; max-width: 100%; min-height: 90px; resize: vertical; font-size: 13px; line-height: 1.6; }
+
+/* Info box */
+.evo-info-box { background: #f8fafc; border: 1px solid #d7dde7; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: #374151; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start; }
+.evo-info-box .dashicons { color: #2563eb; flex-shrink: 0; margin-top: 1px; }
+.evo-info-box code { background: #eef2ff; color: #3730a3; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+/* Divider and save bar */
+.evo-divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+.evo-save-bar { display: flex; align-items: center; gap: 12px; margin: 24px -28px -24px; padding: 14px 28px; background: rgba(255,255,255,.94); backdrop-filter: blur(8px); border-top: 1px solid #e5e7eb; border-radius: 0 0 10px 10px; }
+.evo-save-bar .button-primary { background: #2563eb; border-color: #2563eb; }
+.evo-save-bar .button-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+/* Maintenance-specific */
+.evo-bypass-preview { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 12px; color: #0369a1; word-break: break-all; }
+.evo-paths-preview { background: #f8fafc; border: 1px solid #d7dde7; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 12px; color: #374151; font-family: monospace; line-height: 1.8; }
+.evo-paths-preview .evo-path-hardcoded { color: #94a3b8; }
+
+/* Range sliders */
+.evo-slider-wrap { display: flex; align-items: center; gap: 16px; }
+.evo-slider-track { flex: 1; position: relative; height: 6px; background: #e5e7eb; border-radius: 3px; }
+.evo-slider-fill { position: absolute; left: 0; top: 0; height: 100%; background: #64748b; border-radius: 3px; transition: width .1s; }
+.evo-range { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; height: 24px; margin: 0; opacity: 0; cursor: pointer; z-index: 2; }
+.evo-slider-thumb { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 18px; height: 18px; background: #fff; border: 2px solid #64748b; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.15); pointer-events: none; transition: border-color .15s, box-shadow .15s; }
+.evo-slider-wrap:hover .evo-slider-thumb { border-color: #475569; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.evo-slider-value { min-width: 56px; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 14px; font-weight: 500; color: #334155; text-align: center; font-family: monospace; }
+
+/* Sitemap tab */
+.evo-sm-box { background: #f8fafc; border: 1px solid #d7dde7; border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+.evo-sm-box h3 { margin: 0 0 8px; font-size: 14px; color: #111827; }
+.evo-sm-box label { display: block; margin: 8px 0; font-size: 13px; }
+.evo-sm-excluded-list { max-height: 320px; overflow: auto; background: #fff; border: 1px solid #dcdcde; border-radius: 6px; padding: 8px 12px; margin-top: 10px; }
+.evo-sm-excluded-list label { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f0f0f1; font-size: 13px; }
+
+/* IO tab */
+.evo-io-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 10px; margin: 14px 0 20px; }
+.evo-io-module { display: flex; align-items: center; gap: 9px; background: #f8fafc; border: 1px solid #d7dde7; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 500; color: #111827; cursor: pointer; transition: border-color .15s, background .15s; }
+.evo-io-module:hover { background: #eff6ff; border-color: #93c5fd; }
+.evo-io-module input[type=checkbox] { margin: 0; flex-shrink: 0; }
+.evo-io-module.selected { background: #eff6ff; border-color: #2563eb; }
+.evo-io-box { background: #f8fafc; border: 1px solid #d7dde7; border-radius: 8px; padding: 20px 22px; margin-bottom: 16px; }
+.evo-io-box h3 { margin: 0 0 10px; font-size: 15px; color: #111827; }
+.evo-io-select-all { font-size: 12px; color: #2563eb; cursor: pointer; text-decoration: underline; margin-left: 6px; }
+
+/* Drop zone */
+.evo-drop-zone { border: 2px dashed #d7dde7; border-radius: 8px; padding: 32px; text-align: center; color: #64748b; font-size: 14px; cursor: pointer; background: #fafafa; transition: all .2s; }
+.evo-drop-zone.drag-over { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+.evo-drop-zone input[type=file] { display: none; }
+.evo-import-status { margin-top: 10px; padding: 8px 14px; border-radius: 6px; font-size: 13px; display: none; }
+.evo-import-status.ok  { background: #d4edda; color: #155724; border: 1px solid #b7dfbe; display: block; }
+.evo-import-status.err { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+
+/* Import conflict modal */
+.evo-modal-bg { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 100000; align-items: center; justify-content: center; }
+.evo-modal-bg.open { display: flex; }
+.evo-modal { background: #fff; border-radius: 12px; padding: 28px 28px 22px; max-width: 560px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.evo-modal h3 { margin: 0 0 6px; font-size: 16px; color: #111827; }
+.evo-modal p  { margin: 0 0 18px; font-size: 13px; color: #50575e; line-height: 1.6; }
+.evo-modal-modules { display: flex; flex-direction: column; gap: 0; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 20px; max-height: 340px; overflow-y: auto; }
+.evo-modal-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #f0f0f1; font-size: 13px; background: #fff; }
+.evo-modal-row:last-child { border-bottom: 0; }
+.evo-modal-row-name { font-weight: 500; color: #111827; display: flex; align-items: center; gap: 8px; }
+.evo-modal-row-name .dashicons { color: #2563eb; font-size: 16px; width: 16px; height: 16px; }
+.evo-modal-row-actions { display: flex; gap: 8px; }
+.evo-modal-row-actions button { border: 1px solid #d1d5db; background: #fff; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; }
+.evo-modal-btn-overwrite { color: #dc2626; border-color: #fca5a5; }
+.evo-modal-btn-overwrite:hover { background: #fef2f2; border-color: #dc2626; }
+.evo-modal-btn-skip { color: #6b7280; }
+.evo-modal-btn-skip:hover { background: #f3f4f6; }
+.evo-modal-btn-done { background: #2563eb; color: #fff; border-color: #2563eb; border-radius: 6px; padding: 8px 20px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.evo-modal-btn-done:hover { background: #1d4ed8; }
+.evo-modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
+.evo-modal-row.skipped { opacity: .4; }
+.evo-modal-row.overwritten { background: #f0fdf4; }
+.evo-modal-row.overwritten .evo-modal-row-name { color: #16a34a; }
+
+/* Dark Mode color picker */
+.evo-color-row { display: flex; align-items: center; gap: 10px; }
+.evo-color-swatch { width: 32px; height: 32px; border-radius: 6px; border: 1px solid #d1d5db; cursor: pointer; padding: 0; background: none; }
+
+/* SEO — fix button width on click */
+.evoke-save-seo { min-width: 90px !important; white-space: nowrap; }
+
+/* =========================================================================
+   RESPONSIVE — Evoke ONE Admin Panel
+   Breakpoints: 782px (WP mobile), 600px (extra small)
+   ========================================================================= */
+
+/* ── Nowe klasy gridów z admin-whitelabel.php ─────────────────────────── */
+.evk-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+.evk-grid-colors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.evk-bar-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.evk-bar-save-wrap {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── Bar builder rows ─────────────────────────────────────────────────── */
+.evk-bar-row {
+    flex-wrap: wrap;
+}
+
+@media screen and (max-width: 782px) {
+
+    /* Panel — mniej paddingu */
+    .evo-panel {
+        padding: 16px 14px 16px;
+    }
+    .evo-save-bar {
+        margin: 16px -14px -16px;
+        padding: 12px 14px;
+    }
+
+    /* Tabs — grid 3-kolumnowy zamiast flex (15+ zakładek nie mieści się w rzędzie) */
+    .evo-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        padding: 4px;
+    }
+    .evo-tab {
+        padding: 8px 6px;
+        font-size: 11px;
+        justify-content: center;
+        text-align: center;
+        gap: 4px;
+    }
+    .evo-tab .dashicons {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Status card — stack pionowo */
+    .evo-status-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+    }
+    .evo-status-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* 2-col gridy → 1 kolumna */
+    .evk-grid-2col {
+        grid-template-columns: 1fr !important;
+        gap: 0;
+    }
+    .evk-grid-colors {
+        grid-template-columns: 1fr 1fr !important; /* kolory zostawiamy 2col — małe inputy */
+    }
+
+    /* Bar builder toolbar — save button pełna szerokość */
+    .evk-bar-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .evk-bar-toolbar > .button {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    .evk-bar-save-wrap {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .evk-bar-save-wrap .button-primary {
+        flex: 1;
+    }
+
+    /* Bar builder rows — stack fields */
+    .evk-bar-row {
+        flex-wrap: wrap;
+        gap: 6px !important;
+    }
+    .evk-bar-row input[type=text],
+    .evk-bar-row input[type=url] {
+        min-width: 0;
+        flex: 1 1 120px !important;
+        width: auto !important;
+    }
+
+    /* Inputs — pełna szerokość */
+    .evo-field input[type=text],
+    .evo-field textarea {
+        max-width: 100%;
+    }
+
+    /* Order grid — 1 kolumna */
+    .evk-order-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Inline 1fr 1fr 1fr z tab-seo */
+    [style*="grid-template-columns:1fr 1fr 1fr"],
+    [style*="grid-template-columns: 1fr 1fr 1fr"] {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Inline 1fr 1fr bez max-width constraint */
+    [style*="grid-template-columns:1fr 1fr;gap:16px;margin"],
+    [style*="grid-template-columns:1fr 1fr;gap:24px"] {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    /* IO tab grid */
+    .evo-io-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Modal pełna szerokość */
+    .evo-modal {
+        width: 95% !important;
+        padding: 20px 16px 16px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+
+    /* Tabs — 2 kolumny na bardzo małym ekranie */
+    .evo-tabs {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px;
+        padding: 3px;
+    }
+    .evo-tab {
+        padding: 7px 4px;
+        font-size: 11px;
+    }
+    .evo-tab .dashicons {
+        display: none;
+    }
+
+    /* Kolory — na bardzo małym ekranie też 1 kolumna */
+    .evk-grid-colors {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Status card — ikon hide */
+    .evo-status-icon {
+        display: none;
+    }
+
+    /* Panel — minimalny padding */
+    .evo-panel {
+        padding: 12px 10px 12px;
+    }
+    .evo-save-bar {
+        margin: 12px -10px -12px;
+        padding: 10px;
+    }
+}
+
+/* ── Subtaby (podzakładki wewnątrz sekcji) ───────────────────────────── */
+.evk-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e5e7eb;
+}
+.evk-subtab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+}
+.evk-subtab:hover {
+    color: #2563eb;
+    border-bottom-color: #93c5fd;
+}
+.evk-subtab.is-active {
+    font-weight: 700;
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+.evk-subtab .dashicons {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+@media screen and (max-width: 782px) {
+    .evk-subtabs {
+        gap: 2px;
+        border-bottom: none;
+        background: #f1f5f9;
+        border-radius: 8px;
+        padding: 4px;
+        margin-bottom: 16px;
+    }
+    .evk-subtab {
+        flex: 1 1 auto;
+        justify-content: center;
+        padding: 7px 10px;
+        font-size: 12px;
+        border-bottom: none;
+        border-radius: 6px;
+        margin-bottom: 0;
+        text-align: center;
+    }
+    .evk-subtab:hover {
+        background: #fff;
+        border-bottom-color: transparent;
+    }
+    .evk-subtab.is-active {
+        background: #fff;
+        border-bottom-color: transparent;
+        box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .evk-subtab .dashicons {
+        display: none;
+    }
+    .evk-subtab {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+}
+
+/* ── SEO tab — toolbar i tabela ──────────────────────────────────────── */
+.evk-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 24px;
+}
+.evk-seo-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.evk-seo-search-input {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    width: 260px;
+    max-width: 100%;
+}
+.evk-seo-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+@media screen and (max-width: 782px) {
+    .evk-seo-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .evk-seo-search-input {
+        width: 100%;
+    }
+    .evk-seo-toolbar-actions {
+        width: 100%;
+    }
+    .evk-seo-toolbar-actions .button-primary {
+        flex: 1;
+        text-align: center;
+    }
+    /* Przycisk Zapisz w wierszu tabeli — pod polami na mobile */
+    .evk-seo-row-save {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ── SEO — przycisk Zapisz inline w komórce pól ─────────────────────── */
+.evk-seo-save-inline {
+    margin-top: 6px;
+    white-space: nowrap;
+}
+
+@media screen and (max-width: 782px) {
+    .evk-seo-save-inline {
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
+    }
+    .evk-seo-robots-col {
+        display: none !important;
+    }
+}
+
+/* Fix WP footer — nie nakłada się na treść */
+#wpcontent { padding-bottom: 40px !important; }
