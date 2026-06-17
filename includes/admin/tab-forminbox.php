@@ -181,7 +181,8 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         <span class="dashicons dashicons-info"></span>
         <div>
             Ustaw które pola i w jakiej kolejności pojawiają się w <strong>nagłówku wiadomości</strong> oraz na <strong>liście (lewy panel)</strong>.
-            Lista pól pochodzi z mapowania powyżej. Strzałkami zmieniasz kolejność. Puste = autodetekcja.
+            Strzałkami zmieniasz kolejność. Puste = autodetekcja.
+            <br>Możesz łączyć kilka pól w jednej linii — wpisz szablon, np. <code>{{nazwisko}} {{imie}}</code>, albo użyj selektora <strong>▾</strong> aby wstawić pole.
         </div>
     </div>
     <?php
@@ -201,7 +202,10 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
                 $opts .= '<option value="' . esc_attr($tk) . '"' . selected($r['type'], $tk, false) . '>' . esc_html($tlbl) . '</option>';
             }
             echo '<tr class="evk-layout-row" data-group="' . esc_attr($group) . '" style="border-bottom:1px solid #f1f5f9;">'
-                . '<td style="padding:5px 6px;"><select class="evk-key-select" name="evk_forminbox[' . esc_attr($group) . '_layout_keys][]" data-val="' . esc_attr($r['key']) . '" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;"></select></td>'
+                . '<td style="padding:5px 6px;"><div style="display:flex;gap:4px;align-items:center;">'
+                    . '<input type="text" class="evk-layout-tpl" name="evk_forminbox[' . esc_attr($group) . '_layout_keys][]" value="' . esc_attr($r['key']) . '" placeholder="{{nazwisko}} {{imie}}" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;font-family:monospace;">'
+                    . '<select class="evk-key-insert" title="Wstaw pole" style="width:38px;flex-shrink:0;border:1px solid #d1d5db;border-radius:5px;padding:4px 2px;font-size:12px;"></select>'
+                    . '</div></td>'
                 . '<td style="padding:5px 6px;width:150px;"><select name="evk_forminbox[' . esc_attr($group) . '_layout_types][]" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;">' . $opts . '</select></td>'
                 . '<td style="padding:5px 4px;width:78px;white-space:nowrap;text-align:right;">'
                     . '<button type="button" class="evk-row-up button-link" title="W górę" style="padding:2px;"><span class="dashicons dashicons-arrow-up-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>'
@@ -537,33 +541,30 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         sidebar: [['name', 'Nazwa (pogrubiona)'], ['preview', 'Podgląd'], ['meta', 'Meta (mała linia)']]
     };
 
-    function fieldOptions(selected) {
+    function fieldInsertOptions() {
         var map  = getFieldMap();
-        var html = '<option value="">— wybierz pole —</option>';
+        var html = '<option value="">\u25be</option>'; // ▾
         Object.keys(map).forEach(function(k) {
             var lbl = map[k] !== ('{{' + k + '}}') ? map[k] : k;
-            html += '<option value="' + esc(k) + '"' + (k === selected ? ' selected' : '') + '>' + esc(lbl) + ' (' + esc(k) + ')</option>';
+            html += '<option value="' + esc(k) + '">' + esc(lbl) + ' (' + esc(k) + ')</option>';
         });
-        if (selected && !map[selected]) {
-            html += '<option value="' + esc(selected) + '" selected>' + esc(selected) + '</option>';
-        }
         return html;
     }
 
     function refreshKeySelects() {
-        $('.evk-key-select').each(function() {
-            var cur = $(this).val() || $(this).data('val') || '';
-            $(this).html(fieldOptions(cur));
-            if (cur) $(this).val(cur);
-        });
+        var opts = fieldInsertOptions();
+        $('.evk-key-insert').html(opts);
     }
 
-    function layoutRow(group, key, type) {
+    function layoutRow(group, tpl, type) {
         var topts = EVK_TYPE_OPTS[group].map(function(o) {
             return '<option value="' + o[0] + '"' + (o[0] === type ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('');
         return $('<tr class="evk-layout-row" data-group="' + group + '" style="border-bottom:1px solid #f1f5f9;">' +
-            '<td style="padding:5px 6px;"><select class="evk-key-select" name="evk_forminbox[' + group + '_layout_keys][]" data-val="' + esc(key || '') + '" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;"></select></td>' +
+            '<td style="padding:5px 6px;"><div style="display:flex;gap:4px;align-items:center;">' +
+                '<input type="text" class="evk-layout-tpl" name="evk_forminbox[' + group + '_layout_keys][]" value="' + esc(tpl || '') + '" placeholder="{{nazwisko}} {{imie}}" style="flex:1;min-width:0;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;font-family:monospace;">' +
+                '<select class="evk-key-insert" title="Wstaw pole" style="width:38px;flex-shrink:0;border:1px solid #d1d5db;border-radius:5px;padding:4px 2px;font-size:12px;"></select>' +
+            '</div></td>' +
             '<td style="padding:5px 6px;width:150px;"><select name="evk_forminbox[' + group + '_layout_types][]" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:12px;">' + topts + '</select></td>' +
             '<td style="padding:5px 4px;width:78px;white-space:nowrap;text-align:right;">' +
                 '<button type="button" class="evk-row-up button-link" title="W górę" style="padding:2px;"><span class="dashicons dashicons-arrow-up-alt2" style="font-size:14px;width:14px;height:14px;"></span></button>' +
@@ -577,8 +578,18 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
         tbody.find('.evk-layout-empty').remove();
         var row = layoutRow(group, '', EVK_TYPE_OPTS[group][0][0]);
         tbody.append(row);
-        row.find('.evk-key-select').html(fieldOptions(''));
+        row.find('.evk-key-insert').html(fieldInsertOptions());
     }
+
+    // Wstaw {{klucz}} do szablonu linii po wyborze z selektora
+    $(document).on('change', '.evk-key-insert', function() {
+        var key = $(this).val();
+        if (!key) return;
+        var input = $(this).closest('div').find('.evk-layout-tpl');
+        var cur   = input.val();
+        input.val((cur && cur.trim() ? cur.replace(/\s+$/, '') + ' ' : '') + '{{' + key + '}}');
+        $(this).val('');
+    });
 
     $('#evk-add-header-row').on('click',  function() { addLayoutRow('header'); });
     $('#evk-add-sidebar-row').on('click', function() { addLayoutRow('sidebar'); });

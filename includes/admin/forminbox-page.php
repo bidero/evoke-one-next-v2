@@ -140,13 +140,17 @@ $table_ok   = evk_inbox_table_exists();
 .evk-inbox-btn-ghost { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
 .evk-inbox-btn-ghost:hover { background: #e2e8f0; border-color: #cbd5e1; color: #1e293b; }
 .evk-inbox-btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
-.evk-inbox-btn-primary,
-a.evk-inbox-btn-primary,
-a.evk-inbox-btn-primary:hover,
-a.evk-inbox-btn-primary:focus,
-a.evk-inbox-btn-primary:visited { background: #2563eb; border-color: #2563eb; color: #fff; }
-.evk-inbox-btn-primary:hover, a.evk-inbox-btn-primary:hover { background: #1d4ed8; }
-.evk-inbox-btn-primary .dashicons { color: #fff; }
+.evk-inbox-app a.evk-inbox-btn-primary,
+.evk-inbox-app a.evk-inbox-btn-primary:link,
+.evk-inbox-app a.evk-inbox-btn-primary:visited,
+.evk-inbox-app a.evk-inbox-btn-primary:hover,
+.evk-inbox-app a.evk-inbox-btn-primary:focus,
+.evk-inbox-app a.evk-inbox-btn-primary:active,
+.evk-inbox-btn-primary { background: #2563eb; border-color: #2563eb; }
+.evk-inbox-btn-primary:hover, .evk-inbox-app a.evk-inbox-btn-primary:hover { background: #1d4ed8; }
+.evk-inbox-btn-primary, .evk-inbox-btn-primary *,
+.evk-inbox-app a.evk-inbox-btn-primary,
+.evk-inbox-app a.evk-inbox-btn-primary * { color: #fff !important; }
 .evk-inbox-btn-danger { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
 .evk-inbox-btn-danger:hover { background: #fee2e2; }
 .evk-inbox-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
@@ -454,7 +458,8 @@ a.evk-inbox-btn-primary:visited { background: #2563eb; border-color: #2563eb; co
                 : '';
             let headerLinesHtml = '';
             (d.header_lines || []).forEach(function(l) {
-                headerLinesHtml += `<div class="evk-inbox-hline"><span class="evk-inbox-hline-label">${esc(l.label)}</span> ${esc(l.value)}</div>`;
+                const lbl = l.label ? `<span class="evk-inbox-hline-label">${esc(l.label)}</span> ` : '';
+                headerLinesHtml += `<div class="evk-inbox-hline">${lbl}${esc(l.value)}</div>`;
             });
 
             detail.innerHTML = `

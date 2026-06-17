@@ -174,7 +174,14 @@ function evk_inbox_mark_unread(array $ids): void {
 }
 
 function evk_inbox_format_date(string $dt): string {
-    return date('j M Y', strtotime($dt));
+    $ts   = strtotime($dt);
+    $diff = time() - $ts;
+    if ($diff < 60)        return 'Przed chwilą';
+    if ($diff < 3600)      return round($diff / 60) . ' min temu';
+    if ($diff < 86400)     return round($diff / 3600) . ' godz. temu';
+    if ($diff < 86400 * 2) return 'Wczoraj ' . date('H:i', $ts);
+    if ($diff < 86400 * 7) return date('j M', $ts);
+    return date('j M Y', $ts);
 }
 
 /**
@@ -184,8 +191,8 @@ function evk_inbox_sanitize_layout($keys, $types, array $allowed): array {
     $out = [];
     if (!is_array($keys)) return $out;
     foreach ($keys as $i => $k) {
-        $k = preg_replace('/[^a-z0-9_-]/i', '', sanitize_text_field(trim($k)));
-        if (!$k) continue;
+        $k = sanitize_text_field(trim($k));
+        if ($k === '') continue;
         $t = sanitize_key($types[$i] ?? $allowed[0]);
         if (!in_array($t, $allowed, true)) $t = $allowed[0];
         $out[] = ['key' => $k, 'type' => $t];
@@ -240,6 +247,21 @@ function evk_inbox_get_subject(array $fields, array $s): string {
 }
 
 /**
+ * Renderuje jedną linię układu: pojedynczy klucz pola LUB szablon z {{klucz}}.
+ * Pozwala łączyć kilka pól w jednej linii, np. "{{nazwisko}} {{imie}}".
+ */
+function evk_inbox_render_line(string $tpl, array $fields): string {
+    if ($tpl === '') return '';
+    if (strpos($tpl, '{{') === false) {
+        return evk_inbox_value_by_key($fields, $tpl); // zwykły klucz
+    }
+    $out = evk_inbox_render_template($tpl, $fields, true);  // raw, {{x}} podmienione
+    $out = preg_replace('/\{\{[^}]*\}\}/', '', $out);    // usuń nierozwiązane
+    $out = preg_replace('/[ \t]{2,}/', ' ', $out);
+    return trim($out);
+}
+
+/**
  * Buduje dane sidebaru: nazwa (pogrubiona) + linie (preview/meta).
  * Pusty sidebar_layout → fallback do auto-nazwy + podglądu.
  */
@@ -248,7 +270,7 @@ function evk_inbox_build_sidebar(array $fields, array $s): array {
     $name   = '';
     $lines  = [];
     foreach ($layout as $row) {
-        $val = evk_inbox_value_by_key($fields, $row['key']);
+        $val = evk_inbox_render_line($row['key'], $fields);
         if (!trim($val)) continue;
         if ($row['type'] === 'name' && $name === '') {
             $name = $val;
@@ -276,15 +298,16 @@ function evk_inbox_build_header(array $fields, array $s): array {
     $subtitle = '';
     $lines    = [];
     foreach ($layout as $row) {
-        $val = evk_inbox_value_by_key($fields, $row['key']);
+        $val = evk_inbox_render_line($row['key'], $fields);
         if (!trim($val)) continue;
         if ($row['type'] === 'title' && $title === '') {
             $title = $val;
         } elseif ($row['type'] === 'subtitle' && $subtitle === '') {
             $subtitle = $val;
         } else {
+            $is_tpl = strpos($row['key'], '{{') !== false;
             $lines[] = [
-                'label' => evk_inbox_label_for_key($fields, $row['key'], $s),
+                'label' => $is_tpl ? '' : evk_inbox_label_for_key($fields, $row['key'], $s),
                 'value' => $val,
             ];
         }
