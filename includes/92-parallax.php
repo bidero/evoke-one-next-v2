@@ -17,12 +17,21 @@ class EVK_Parallax {
     }
 
     private function __construct() {
-        add_action('wp_enqueue_scripts',              [$this, 'enqueue_scripts']);
-        add_filter('bricks/dynamic_tags_list',        [$this, 'register_bricks_tag']);
-        add_filter('bricks/dynamic_data/render_tag',  [$this, 'render_bricks_tag'], 10, 3);
-        add_filter('bricks/dynamic_data/render_content', [$this, 'render_bricks_content'], 10, 3);
-        add_filter('bricks/frontend/render_data',     [$this, 'render_bricks_content'], 10, 2);
-        add_action('admin_init',                      [$this, 'register_settings']);
+        $settings = $this->get_settings();
+        if (!empty($settings['enabled'])) {
+            add_action('wp_enqueue_scripts',              [$this, 'enqueue_scripts']);
+            add_filter('bricks/dynamic_tags_list',        [$this, 'register_bricks_tag']);
+            add_filter('bricks/dynamic_data/render_tag',  [$this, 'render_bricks_tag'], 10, 3);
+            add_filter('bricks/dynamic_data/render_content', [$this, 'render_bricks_content'], 10, 3);
+            add_filter('bricks/frontend/render_data',     [$this, 'render_bricks_content'], 10, 2);
+        }
+        add_action('admin_init', [$this, 'register_settings']);
+    }
+
+    public function get_settings(): array {
+        $defaults = ['enabled' => 0];
+        $saved    = get_option('evk_parallax', []);
+        return array_merge($defaults, is_array($saved) ? $saved : []);
     }
 
     public function register_settings(): void {
@@ -36,6 +45,14 @@ class EVK_Parallax {
             'default'           => 1.2,
             'sanitize_callback' => [self::class, 'sanitize_scale_value'],
         ]);
+        register_setting('evoke_one_parallax', 'evk_parallax', [
+            'sanitize_callback' => [self::class, 'sanitize_settings'],
+        ]);
+    }
+
+    public static function sanitize_settings($input): array {
+        $input = is_array($input) ? $input : [];
+        return ['enabled' => !empty($input['enabled']) ? 1 : 0];
     }
 
     public function enqueue_scripts(): void {

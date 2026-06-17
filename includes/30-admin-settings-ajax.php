@@ -236,8 +236,9 @@ add_action('wp_ajax_tl_export', function () {
         'evk_cursor'          => fn() => ['evk_cursor'          => get_option('evk_cursor', [])],
         'evk_lenis'           => fn() => ['evk_lenis'           => get_option('evk_lenis', [])],
         'evk_parallax'        => fn() => [
-            'evk_parallax_value' => get_option('evk_parallax_value', []),
-            'evk_parallax_scale' => get_option('evk_parallax_scale', []),
+            'evk_parallax'       => get_option('evk_parallax', []),
+            'evk_parallax_value' => get_option('evk_parallax_value', 0.3),
+            'evk_parallax_scale' => get_option('evk_parallax_scale', 1.2),
         ],
         'evk_a11y'            => fn() => ['evk_a11y'            => get_option('evk_a11y', [])],
         'evk_schema'          => fn() => ['evk_schema'          => get_option('evk_schema', [])],
@@ -375,7 +376,8 @@ add_action('wp_ajax_tl_import', function () {
 
     // Parallax (dwa klucze → jeden moduł)
     if ($should('evk_parallax')) {
-        if (isset($data['evk_parallax_value'])) { update_option('evk_parallax_value', $data['evk_parallax_value']); $imported++; }
+        if (isset($data['evk_parallax']))       { update_option('evk_parallax',       $data['evk_parallax']); $imported++; }
+        if (isset($data['evk_parallax_value'])) update_option('evk_parallax_value', $data['evk_parallax_value']);
         if (isset($data['evk_parallax_scale'])) update_option('evk_parallax_scale', $data['evk_parallax_scale']);
     }
 

@@ -3,7 +3,31 @@ if (!defined('ABSPATH')) exit;
 /**
  * Evoke ONE — Tab: parallax
  */
+
+$parallax_opt = get_option('evk_parallax', []);
+$par_enabled  = !empty($parallax_opt['enabled']);
 ?>
+<div class="evo-status-card">
+    <div class="evo-status-icon <?php echo $par_enabled ? 'on' : 'off'; ?>">
+        <span class="dashicons dashicons-image-flip-vertical" style="font-size:24px;width:24px;height:24px;line-height:1;"></span>
+    </div>
+    <div class="evo-status-text">
+        <h3>Parallax: <?php echo $par_enabled ? 'WŁĄCZONY' : 'WYŁĄCZONY'; ?></h3>
+        <p><?php echo $par_enabled ? 'Skrypt parallax jest ładowany na frontendzie.' : 'Skrypt parallax nie jest ładowany — zero narzutu.'; ?></p>
+    </div>
+    <div class="evo-status-actions">
+        <span class="evo-toggle-label"><?php echo $par_enabled ? 'Włączony' : 'Wyłączony'; ?></span>
+        <label class="evo-toggle">
+            <input type="checkbox"
+                   data-option="evk_parallax"
+                   data-field="enabled"
+                   value="1"
+                   <?php checked($par_enabled); ?>>
+            <span class="evo-slider"></span>
+        </label>
+    </div>
+</div>
+
 <form method="post" action="options.php">
                 <?php settings_fields('evoke_one_parallax'); ?>
 
