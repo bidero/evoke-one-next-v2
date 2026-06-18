@@ -84,7 +84,12 @@ function evk_nl_phpmailer_send(array $args) {
 
         // List-Unsubscribe + one-click (wymogi Gmail/Yahoo dla masowej wysylki)
         if (!empty($args['unsub_url'])) {
-            $mailer->addCustomHeader('List-Unsubscribe', '<' . $args['unsub_url'] . '>');
+            $nl_opts = get_option('evk_newsletter', []);
+            $mailto  = trim((string) ($nl_opts['unsub_mailto'] ?? ''));
+            $lu = ($mailto !== '' && is_email($mailto))
+                ? '<mailto:' . $mailto . '?subject=unsubscribe>, <' . $args['unsub_url'] . '>'
+                : '<' . $args['unsub_url'] . '>';
+            $mailer->addCustomHeader('List-Unsubscribe', $lu);
             $mailer->addCustomHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         }
 

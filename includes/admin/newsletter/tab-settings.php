@@ -62,6 +62,22 @@ $example_id = $first_list['id'] ?? 1;
 
     <hr class="evo-divider" style="margin:24px 0;">
 
+    <!-- ── LIST-UNSUBSCRIBE ─────────────────────────────────────────── -->
+    <p class="evo-section-title">List-Unsubscribe (pasek „wypisz" w kliencie)</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
+        <span class="dashicons dashicons-info"></span>
+        <div>
+            Pasek wypisu działa już dzięki linkowi <code>https</code> (one-click Gmail/Apple). Opcjonalnie możesz dodać adres <code>mailto</code> dla starszych klientów —
+            <strong>wymaga skrzynki, którą monitorujesz</strong> i ręcznie/automatycznie obsługujesz prośby o wypis. Puste = tylko https (zalecane, jeśli nie masz takiej skrzynki).
+        </div>
+    </div>
+    <div class="evo-field" style="margin-bottom:8px;">
+        <label>Adres mailto do wypisu (opcjonalnie)</label>
+        <input type="email" name="unsub_mailto" value="<?php echo esc_attr($o['unsub_mailto'] ?? ''); ?>" placeholder="np. newsletter@twojadomena.pl" style="max-width:340px;">
+    </div>
+
+    <hr class="evo-divider" style="margin:24px 0;">
+
     <!-- ── TEKSTY ───────────────────────────────────────────────────── -->
     <p class="evo-section-title">Teksty komunikatów</p>
     <div class="evo-info-box" style="margin-bottom:14px;">
@@ -110,6 +126,22 @@ $example_id = $first_list['id'] ?? 1;
         <div class="evo-field" style="margin:0;"><label>Treść (błąd)</label>
             <input type="text" name="unsub_bad_msg" value="<?php echo esc_attr($val('unsub_bad_msg')); ?>"></div>
     </div>
+
+    <hr class="evo-divider" style="margin:24px 0;">
+
+    <p class="evo-section-title">E-mail potwierdzający zapis (double opt-in)</p>
+    <div class="evo-info-box" style="margin-bottom:14px;">
+        <span class="dashicons dashicons-info"></span>
+        <div>Placeholdery: <code>{site}</code> (nazwa witryny), <code>{list}</code> (np. „ do listy „Aktualności""). W treści dozwolone proste tagi.</div>
+    </div>
+    <div class="evo-field"><label>Temat wiadomości</label>
+        <input type="text" name="confirm_subject" value="<?php echo esc_attr($val('confirm_subject')); ?>"></div>
+    <div class="evo-field"><label>Nagłówek</label>
+        <input type="text" name="confirm_email_heading" value="<?php echo esc_attr($val('confirm_email_heading')); ?>"></div>
+    <div class="evo-field"><label>Treść</label>
+        <input type="text" name="confirm_email_text" value="<?php echo esc_attr($val('confirm_email_text')); ?>"></div>
+    <div class="evo-field"><label>Tekst przycisku</label>
+        <input type="text" name="confirm_email_button" value="<?php echo esc_attr($val('confirm_email_button')); ?>"></div>
 
     <p style="margin-top:24px;">
         <button type="submit" class="button button-primary">Zapisz ustawienia</button>

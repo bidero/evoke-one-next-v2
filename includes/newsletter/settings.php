@@ -26,6 +26,11 @@ function evk_nl_text_defaults(): array {
         'unsub_ok_msg'        => 'Adres {email} został wypisany z naszego newslettera.',
         'unsub_bad_title'     => 'Nieprawidłowy link',
         'unsub_bad_msg'       => 'Link jest nieprawidłowy lub już wygasł.',
+        // E-mail potwierdzający zapis (double opt-in) — {site}, {list}
+        'confirm_subject'       => 'Potwierdź zapis — {site}',
+        'confirm_email_heading' => 'Potwierdź zapis do newslettera',
+        'confirm_email_text'    => 'Kliknij poniższy przycisk, aby potwierdzić zapis{list}. Bez potwierdzenia nie będziemy wysyłać wiadomości.',
+        'confirm_email_button'  => 'Potwierdzam zapis',
     ];
 }
 
@@ -79,6 +84,9 @@ function evk_nl_handle_settings_save(): void {
     $o = get_option('evk_newsletter', []);
     if (!is_array($o)) $o = [];
 
+    // List-Unsubscribe — opcjonalny mailto (wymaga monitorowanej skrzynki)
+    $o['unsub_mailto'] = sanitize_email(wp_unslash($_POST['unsub_mailto'] ?? ''));
+
     // Wyglad
     $o['form_default_styles'] = !empty($_POST['form_default_styles']) ? 1 : 0;
     foreach (['form_wrap_class', 'form_input_class', 'form_button_class', 'form_consent_class'] as $k) {
@@ -88,14 +96,15 @@ function evk_nl_handle_settings_save(): void {
     // Teksty proste
     $plain = ['form_success', 'form_pending', 'form_already',
               'confirm_ok_title', 'confirm_bad_title',
-              'unsub_confirm_title', 'unsub_confirm_btn', 'unsub_ok_title', 'unsub_bad_title'];
+              'unsub_confirm_title', 'unsub_confirm_btn', 'unsub_ok_title', 'unsub_bad_title',
+              'confirm_subject', 'confirm_email_heading', 'confirm_email_button'];
     foreach ($plain as $k) {
         if (isset($_POST[$k])) $o[$k] = sanitize_text_field(wp_unslash($_POST[$k]));
     }
 
     // Teksty z dozwolonym prostym HTML
     $allowed = ['strong' => [], 'em' => [], 'br' => [], 'a' => ['href' => [], 'target' => [], 'rel' => []]];
-    $rich = ['confirm_ok_msg', 'confirm_bad_msg', 'unsub_confirm_msg', 'unsub_ok_msg', 'unsub_bad_msg'];
+    $rich = ['confirm_ok_msg', 'confirm_bad_msg', 'unsub_confirm_msg', 'unsub_ok_msg', 'unsub_bad_msg', 'confirm_email_text'];
     foreach ($rich as $k) {
         if (isset($_POST[$k])) $o[$k] = wp_kses(wp_unslash($_POST[$k]), $allowed);
     }

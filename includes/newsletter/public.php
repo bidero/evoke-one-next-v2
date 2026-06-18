@@ -196,20 +196,25 @@ function evk_nl_client_ip(): string {
 function evk_nl_send_confirm_email(string $email, string $token, string $list_name) {
     if (!evk_nl_smtp_is_configured()) return false;
 
-    $url  = evk_nl_confirm_url($token);
-    $site = get_bloginfo('name');
-    $list = $list_name ? ' do listy „' . esc_html($list_name) . '"' : '';
+    $url   = evk_nl_confirm_url($token);
+    $site  = get_bloginfo('name');
+    $listr = $list_name ? ' do listy „' . esc_html($list_name) . '"' : '';
+
+    $subject = evk_nl_text('confirm_subject', ['site' => $site]);
+    $heading = esc_html(evk_nl_text('confirm_email_heading', ['site' => esc_html($site)]));
+    $text    = evk_nl_text('confirm_email_text', ['site' => esc_html($site), 'list' => $listr]);
+    $button  = esc_html(evk_nl_text('confirm_email_button'));
 
     $body = '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b;">'
-          . '<h2 style="margin:0 0 12px;">Potwierdź zapis do newslettera</h2>'
-          . '<p style="color:#475569;line-height:1.6;margin:0 0 20px;">Kliknij poniższy przycisk, aby potwierdzić zapis' . $list . '. Bez potwierdzenia nie będziemy wysyłać wiadomości.</p>'
-          . '<p style="margin:0 0 24px;"><a href="' . esc_url($url) . '" style="display:inline-block;background:#2563eb;color:#fff;padding:13px 30px;border-radius:8px;text-decoration:none;font-weight:600;">Potwierdzam zapis</a></p>'
+          . '<h2 style="margin:0 0 12px;">' . $heading . '</h2>'
+          . '<p style="color:#475569;line-height:1.6;margin:0 0 20px;">' . $text . '</p>'
+          . '<p style="margin:0 0 24px;"><a href="' . esc_url($url) . '" style="display:inline-block;background:#2563eb;color:#fff;padding:13px 30px;border-radius:8px;text-decoration:none;font-weight:600;">' . $button . '</a></p>'
           . '<p style="color:#94a3b8;font-size:12px;line-height:1.5;margin:0;">Jeśli to nie Ty zapisywałeś się do newslettera, zignoruj tę wiadomość — nic się nie stanie.</p>'
           . '</div>';
 
     return evk_nl_phpmailer_send([
         'to'      => $email,
-        'subject' => 'Potwierdź zapis — ' . $site,
+        'subject' => $subject,
         'body'    => $body,
         'smtp'    => evk_smtp_get(),
     ]);
