@@ -168,3 +168,33 @@ function evk_nl_get_logs(int $campaign_id, string $event = '', int $limit = 100,
         ARRAY_A
     ) ?: [];
 }
+
+// =========================================================================
+// KOLEJKA PER-SUBSKRYBENT (status wysyłki)
+// =========================================================================
+
+function evk_nl_campaign_queue(int $campaign_id, string $status = '', int $page = 1, int $per = 50): array {
+    global $wpdb;
+    $q = evk_nl_table('queue');
+    $s = evk_nl_table('subscribers');
+    $page = max(1, $page);
+    $per  = max(1, min(200, $per));
+    $off  = ($page - 1) * $per;
+
+    $where = 'q.campaign_id = %d';
+    $args  = [$campaign_id];
+    if ($status !== '' && in_array($status, ['pending', 'sent', 'opened', 'clicked', 'failed', 'cancelled'], true)) {
+        $where .= ' AND q.status = %s';
+        $args[] = $status;
+    }
+
+    $total = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $q q WHERE $where", $args));
+    $rows  = $wpdb->get_results($wpdb->prepare(
+        "SELECT q.status, q.attempts, q.sent_at, q.opened_at, q.error_message, s.email
+         FROM $q q LEFT JOIN $s s ON s.id = q.subscriber_id
+         WHERE $where ORDER BY q.id ASC LIMIT %d OFFSET %d",
+        array_merge($args, [$per, $off])
+    ), ARRAY_A) ?: [];
+
+    return ['rows' => $rows, 'total' => $total, 'page' => $page, 'per' => $per, 'pages' => (int) ceil($total / $per)];
+}

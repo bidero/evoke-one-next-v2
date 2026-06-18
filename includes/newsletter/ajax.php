@@ -206,6 +206,7 @@ add_action('wp_ajax_evk_nl_launch_campaign', function () {
         'pause'   => evk_nl_pause_campaign($id),
         'resume'  => evk_nl_resume_campaign($id),
         'restart' => evk_nl_restart_campaign($id),
+        'cancel'  => evk_nl_cancel_campaign($id),
         default   => false,
     };
 
@@ -222,6 +223,14 @@ add_action('wp_ajax_evk_nl_campaign_stats', function () {
     $id    = (int) ($_POST['id'] ?? 0);
     $stats = evk_nl_campaign_stats($id);
     wp_send_json_success($stats);
+});
+
+add_action('wp_ajax_evk_nl_campaign_queue', function () {
+    evk_nl_ajax_check();
+    $id     = (int) ($_POST['id'] ?? 0);
+    $status = sanitize_key($_POST['status'] ?? '');
+    $page   = (int) ($_POST['page'] ?? 1);
+    wp_send_json_success(evk_nl_campaign_queue($id, $status, $page));
 });
 
 // =========================================================================

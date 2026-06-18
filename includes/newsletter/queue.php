@@ -184,6 +184,19 @@ function evk_nl_pause_campaign(int $campaign_id): bool {
     return evk_nl_update_campaign($campaign_id, ['status' => 'paused']);
 }
 
+function evk_nl_cancel_campaign(int $campaign_id): bool {
+    $campaign = evk_nl_get_campaign($campaign_id);
+    if (!$campaign || !in_array($campaign['status'], ['sending', 'scheduled', 'paused'], true)) return false;
+    wp_clear_scheduled_hook('evk_nl_process_batch', [$campaign_id]);
+    global $wpdb;
+    $q = evk_nl_table('queue');
+    $wpdb->query($wpdb->prepare(
+        "UPDATE $q SET status='cancelled' WHERE campaign_id=%d AND status='pending'", $campaign_id
+    ));
+    evk_nl_log($campaign_id, 'error', null, ['msg' => 'Kampania anulowana — wysyłka zatrzymana.']);
+    return evk_nl_update_campaign($campaign_id, ['status' => 'cancelled']);
+}
+
 function evk_nl_resume_campaign(int $campaign_id): bool {
     $campaign = evk_nl_get_campaign($campaign_id);
     if (!$campaign || $campaign['status'] !== 'paused') return false;

@@ -22,10 +22,20 @@ $status_labels = [
     'sending'   => ['label' => 'Wysyłanie',   'color' => '#2563eb'],
     'paused'    => ['label' => 'Pauza',       'color' => '#f97316'],
     'done'      => ['label' => 'Zakończona',  'color' => '#16a34a'],
+    'cancelled' => ['label' => 'Anulowana',   'color' => '#dc2626'],
 ];
 ?>
 <style>
 .evk-nl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+#evk-nl-modal{display:none;position:fixed;inset:0;z-index:100000;align-items:center;justify-content:center;}
+#evk-nl-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.6);}
+.evk-nl-modal-box{position:relative;background:#fff;border-radius:12px;width:min(920px,94vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.evk-nl-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e2e8f0;}
+.evk-nl-modal-head h2{margin:0;font-size:16px;}
+#evk-nl-modal-close{background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:#64748b;}
+.evk-nl-modal-body{padding:18px;overflow:auto;}
+.evk-nl-rcp-tools{margin-bottom:12px;}
+.evk-nl-rcp-pager{margin-top:12px;font-size:12px;color:#64748b;display:flex;align-items:center;gap:10px;}
 .evk-nl-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:20px;}
 .evk-nl-label{display:block;margin-bottom:5px;font-size:12px;font-weight:600;color:#374151;}
 .evk-nl-label-mt{margin-top:14px;}
@@ -117,6 +127,7 @@ $status_labels = [
     <div class="evk-nl-actions">
         <button class="button button-primary" id="evk-nl-save-camp">Zapisz draft</button>
         <?php if ($edit_camp): ?>
+            <button class="button evk-nl-preview" data-url="<?php echo esc_url(home_url('/nl/view/' . (int) $edit_camp['id'] . '/')); ?>" style="display:inline-flex;align-items:center;gap:5px;"><span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;line-height:0;display:block;"></span> Podgląd</button>
             <?php if (in_array($st, ['draft', 'scheduled'])): ?>
             <button class="button button-primary" id="evk-nl-launch-now"
                     style="background:#16a34a;border-color:#16a34a;">▶ Uruchom teraz</button>
@@ -127,7 +138,10 @@ $status_labels = [
             <?php if ($st === 'paused'): ?>
             <button class="button button-primary" id="evk-nl-resume">▶ Wznów</button>
             <?php endif; ?>
-            <?php if (in_array($st, ['done', 'failed'])): ?>
+            <?php if (in_array($st, ['sending', 'scheduled', 'paused'])): ?>
+            <button class="button" id="evk-nl-cancel" style="border-color:#dc2626;color:#dc2626;">■ Stop</button>
+            <?php endif; ?>
+            <?php if (in_array($st, ['done', 'failed', 'cancelled'])): ?>
             <button class="button" id="evk-nl-restart">↺ Uruchom ponownie</button>
             <?php endif; ?>
         <?php endif; ?>
@@ -215,9 +229,12 @@ $status_labels = [
                             <a href="<?php echo esc_url($rep_url); ?>" class="evk-nl-btn-icon" title="Raport">
                                 <span class="dashicons dashicons-chart-bar"></span>
                             </a>
-                            <a href="<?php echo esc_url($view_url); ?>" class="evk-nl-btn-icon" target="_blank" title="Podgląd">
+                            <button class="evk-nl-btn-icon evk-nl-preview" data-url="<?php echo esc_url($view_url); ?>" title="Podgląd">
                                 <span class="dashicons dashicons-visibility"></span>
-                            </a>
+                            </button>
+                            <button class="evk-nl-btn-icon evk-nl-recipients" data-id="<?php echo (int) $c['id']; ?>" data-name="<?php echo esc_attr($c['name']); ?>" title="Odbiorcy">
+                                <span class="dashicons dashicons-groups"></span>
+                            </button>
                             <button class="evk-nl-btn-icon evk-nl-clear-logs" data-id="<?php echo (int) $c['id']; ?>" title="Wyczyść logi">
                                 <span class="dashicons dashicons-trash" style="color:#f59e0b;"></span>
                             </button>
@@ -232,6 +249,14 @@ $status_labels = [
         </table>
     </div>
     <?php endif; ?>
+</div>
+
+<div id="evk-nl-modal">
+    <div id="evk-nl-modal-backdrop"></div>
+    <div class="evk-nl-modal-box">
+        <div class="evk-nl-modal-head"><h2 id="evk-nl-modal-title"></h2><button id="evk-nl-modal-close" type="button">&times;</button></div>
+        <div class="evk-nl-modal-body" id="evk-nl-modal-body"></div>
+    </div>
 </div>
 
 <script>
@@ -273,8 +298,8 @@ jQuery(function($) {
         if (!id) { alert('Najpierw zapisz kampanię.'); return; }
         $('#evk-nl-camp-msg').text('...').css('color','#64748b');
         $.post(ajaxurl, {action:'evk_nl_launch_campaign', nonce:nonce, id:id, campaign_action:action}, function(res) {
-            if (res.success) { $('#evk-nl-camp-msg').text('OK — ' + res.data?.status).css('color','#16a34a'); setTimeout(function() { location.reload(); }, 800); }
-            else { $('#evk-nl-camp-msg').text(res.data?.msg || 'Błąd').css('color','#dc2626'); }
+            if (res.success) { $('#evk-nl-camp-msg').text(res.msg || 'OK').css('color','#16a34a'); setTimeout(function() { location.reload(); }, 800); }
+            else { $('#evk-nl-camp-msg').text(res.msg || 'Błąd').css('color','#dc2626'); }
         });
     }
 
@@ -326,5 +351,64 @@ jQuery(function($) {
         $.post(ajaxurl, {action:'evk_nl_bulk_campaigns', nonce:nonce, bulk_action:a, ids:JSON.stringify(sel)}, function(res) { if (res.success) location.reload(); else alert(res.data?.msg||'Błąd'); });
     });
     $('#evk-nl-camp-bulk-cancel').on('click', function() { sel=[]; $('.evk-nl-camp-cb,#evk-nl-camp-check-all').prop('checked',false); updateBulk(); });
+
+    // ── Stop (anulowanie) ──
+    $('#evk-nl-cancel').on('click', function() {
+        if (confirm('Zatrzymać i anulować wysyłkę? Niewysłane maile nie zostaną wysłane.')) campaignAction('cancel');
+    });
+
+    // ── Modal (podgląd + odbiorcy) ──
+    function esc(t){ return $('<div>').text(t==null?'':String(t)).html(); }
+    function evkModal(title, body){
+        $('#evk-nl-modal-title').text(title);
+        $('#evk-nl-modal-body').html(body);
+        $('#evk-nl-modal').css('display','flex');
+    }
+    function evkModalClose(){ $('#evk-nl-modal').hide(); $('#evk-nl-modal-body').empty(); }
+    $('#evk-nl-modal-close, #evk-nl-modal-backdrop').on('click', evkModalClose);
+    $(document).on('keydown', function(e){ if(e.key==='Escape') evkModalClose(); });
+
+    $(document).on('click', '.evk-nl-preview', function(){
+        var url = $(this).data('url');
+        evkModal('Podgląd kampanii', '<iframe src="'+url+'" style="width:100%;height:70vh;border:1px solid #e2e8f0;border-radius:8px;background:#fff;"></iframe>');
+    });
+
+    function statusBadge(s){
+        var m={pending:['#f59e0b','oczekuje'],sent:['#16a34a','wysłana'],opened:['#2563eb','otwarta'],clicked:['#7c3aed','kliknięta'],failed:['#dc2626','błąd'],cancelled:['#94a3b8','anulowana']};
+        var x=m[s]||['#94a3b8',s];
+        return '<span style="background:'+x[0]+'22;color:'+x[0]+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;">'+x[1]+'</span>';
+    }
+    function rcpLoad(){
+        var b=$('#evk-nl-modal'), id=b.data('rcpId'), status=b.data('rcpStatus')||'', page=b.data('rcpPage')||1;
+        $('#evk-nl-rcp-list').html('<p style="color:#64748b;">Ładowanie…</p>');
+        $.post(ajaxurl, {action:'evk_nl_campaign_queue', nonce:nonce, id:id, status:status, page:page}, function(res){
+            if(!res.success){ $('#evk-nl-rcp-list').text('Błąd ładowania.'); return; }
+            var d=res.data, h='';
+            if(!d.rows.length){ h='<p style="color:#64748b;">Brak odbiorców dla tego filtra.</p>'; }
+            else {
+                h='<table class="widefat striped" style="font-size:13px;"><thead><tr><th>E-mail</th><th>Status</th><th>Próby</th><th>Wysłano</th><th>Otwarto</th></tr></thead><tbody>';
+                d.rows.forEach(function(r){
+                    h+='<tr><td>'+esc(r.email||'—')+'</td><td>'+statusBadge(r.status)+'</td><td>'+esc(r.attempts)+'</td><td>'+esc(r.sent_at||'—')+'</td><td>'+esc(r.opened_at||'—')+'</td></tr>';
+                });
+                h+='</tbody></table>';
+            }
+            h+='<div class="evk-nl-rcp-pager"><span>'+esc(d.total)+' odbiorców • strona '+esc(d.page)+'/'+esc(d.pages||1)+'</span>'+
+               (d.page>1?'<button class="button button-small evk-rcp-prev">‹ poprzednia</button>':'')+
+               (d.page<d.pages?'<button class="button button-small evk-rcp-next">następna ›</button>':'')+'</div>';
+            $('#evk-nl-rcp-list').html(h);
+        });
+    }
+    $(document).on('click', '.evk-nl-recipients', function(){
+        var b=$('#evk-nl-modal');
+        b.data('rcpId', $(this).data('id')).data('rcpStatus','').data('rcpPage',1);
+        evkModal('Odbiorcy — ' + $(this).data('name'),
+            '<div class="evk-nl-rcp-tools"><select id="evk-rcp-status" style="font-size:12px;">'+
+            '<option value="">Wszyscy</option><option value="sent">Wysłane</option><option value="opened">Otwarte</option><option value="clicked">Kliknięte</option><option value="pending">Oczekujące</option><option value="failed">Błędy</option><option value="cancelled">Anulowane</option>'+
+            '</select></div><div id="evk-nl-rcp-list"></div>');
+        rcpLoad();
+    });
+    $(document).on('change', '#evk-rcp-status', function(){ $('#evk-nl-modal').data('rcpStatus',$(this).val()).data('rcpPage',1); rcpLoad(); });
+    $(document).on('click', '.evk-rcp-prev', function(){ var b=$('#evk-nl-modal'); b.data('rcpPage',Math.max(1,(b.data('rcpPage')||1)-1)); rcpLoad(); });
+    $(document).on('click', '.evk-rcp-next', function(){ var b=$('#evk-nl-modal'); b.data('rcpPage',(b.data('rcpPage')||1)+1); rcpLoad(); });
 });
 </script>
