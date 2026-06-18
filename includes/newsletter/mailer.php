@@ -35,7 +35,7 @@ function evk_nl_send_mail(array $subscriber, array $campaign, array $template, a
     // Załączniki PDF — dodaj linki w treści maila
     $attachment_ids = json_decode($template['attachments_json'] ?? '[]', true) ?: [];
     if (!empty($attachment_ids)) {
-        $body = evk_nl_append_attachment_links($body, $attachment_ids, $subscriber['token'], !empty($campaign['tracking_enabled']));
+        $body = evk_nl_append_attachment_links($body, $attachment_ids, $subscriber['token'], !empty($campaign['tracking_enabled']), (int) $campaign['id']);
     }
 
     if (!empty($campaign['tracking_enabled'])) {
@@ -48,6 +48,7 @@ function evk_nl_send_mail(array $subscriber, array $campaign, array $template, a
         'body'        => $body,
         'smtp'        => $smtp,
         'attachments' => $attachment_ids,
+        'unsub_url'   => $unsub_url,
     ]);
 }
 
@@ -79,6 +80,12 @@ function evk_nl_phpmailer_send(array $args) {
         $mailer->setFrom($from_email, $from_name);
         $mailer->addReplyTo($from_email, $from_name);
         $mailer->addAddress($args['to']);
+
+        // List-Unsubscribe + one-click (wymogi Gmail/Yahoo dla masowej wysylki)
+        if (!empty($args['unsub_url'])) {
+            $mailer->addCustomHeader('List-Unsubscribe', '<' . $args['unsub_url'] . '>');
+            $mailer->addCustomHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+        }
 
         $mailer->isHTML(true);
         $mailer->Subject = $args['subject'];
@@ -131,7 +138,7 @@ function evk_nl_replace_merge_tags(string $text, array $merge): string {
 // LINKI DO ZAŁĄCZNIKÓW W TREŚCI
 // =========================================================================
 
-function evk_nl_append_attachment_links(string $body, array $attachment_ids, string $token, bool $track = true): string {
+function evk_nl_append_attachment_links(string $body, array $attachment_ids, string $token, bool $track = true, int $campaign_id = 0): string {
     $links = [];
 
     foreach ($attachment_ids as $att_id) {
@@ -154,7 +161,7 @@ function evk_nl_append_attachment_links(string $body, array $attachment_ids, str
         };
 
         // Przez tracker kliknięć jeśli tracking włączony
-        $href = $track ? evk_nl_click_url($token, $url) : $url;
+        $href = $track ? evk_nl_click_url($token, $url, $campaign_id) : $url;
 
         $links[] = '<a href="' . esc_url($href) . '" '
                  . 'style="display:inline-block;margin:4px 8px 4px 0;padding:8px 16px;'
@@ -188,7 +195,7 @@ function evk_nl_append_attachment_links(string $body, array $attachment_ids, str
 function evk_nl_inject_tracking(string $body, string $token, int $campaign_id): string {
     $body = preg_replace_callback(
         '/<a\s[^>]*href=["\']([^"\']+)["\'][^>]*>/i',
-        function ($m) use ($token) {
+        function ($m) use ($token, $campaign_id) {
             $url = $m[1];
 
             // Napraw podwójny protokół (TinyMCE bug)
@@ -206,13 +213,13 @@ function evk_nl_inject_tracking(string $body, string $token, int $campaign_id): 
                 return $m[0];
             }
 
-            $track_url = evk_nl_click_url($token, $url);
+            $track_url = evk_nl_click_url($token, $url, $campaign_id);
             return str_replace($m[1], $track_url, $m[0]);
         },
         $body
     );
 
-    $pixel_url = evk_nl_open_url($token);
+    $pixel_url = evk_nl_open_url($token, $campaign_id);
     $pixel     = '<img src="' . esc_url($pixel_url) . '" width="1" height="1" border="0" alt="" '
                . 'style="display:block;width:1px;height:1px;max-width:1px;max-height:1px;'
                . 'margin:0;padding:0;line-height:0;border:none;" />';

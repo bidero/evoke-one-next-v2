@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Evoke ONE
  * Description: Zintegrowany zestaw narzędzi Evoke Design Studio — Tłumaczenia, Parallax, Konserwacja.
- * Version: 1.9.126
+ * Version: 1.9.127
  * Author: Evoke Design Studio
  * Text Domain: evoke-one
  */
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) exit;
 define('EVOKE_ONE_FILE',    __FILE__);
 define('EVOKE_ONE_DIR',     plugin_dir_path(__FILE__));
 define('EVOKE_ONE_URL',     plugin_dir_url(__FILE__));
-define('EVOKE_ONE_VERSION', '1.9.126');
+define('EVOKE_ONE_VERSION', '1.9.127');
 
 // Stałe modułu tłumaczeń (zachowane dla kompatybilności z istniejącymi ustawieniami)
 define('TL_MENU_SLUG',        'evoke-tlumaczenia');
@@ -173,6 +173,7 @@ if (!empty($evk_nl_opts['enabled'])) {
 }
 
 require_once EVOKE_ONE_DIR . 'includes/newsletter/ajax.php';
+require_once EVOKE_ONE_DIR . 'includes/newsletter/public.php';
 
 // =========================================================================
 // REJESTRACJA USTAWIEŃ SCHEMA (wymaga załadowanej klasy EVK_Schema)

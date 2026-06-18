@@ -1,6 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+/** Czy biezacy uzytkownik moze czytac wiadomosci (skrzynke). */
+function evk_inbox_can(): bool {
+    return current_user_can('manage_options') || current_user_can('evk_access_messages');
+}
+
 /**
  * Evoke ONE — Moduł Skrzynki Formularzy Bricks (Form Inbox)
  */
@@ -131,7 +136,7 @@ add_action('admin_menu', function () {
     add_menu_page(
         $s['menu_label'],
         $s['menu_label'],
-        'manage_options',
+        'evk_access_messages',
         'evk-form-inbox',
         'evk_inbox_render_page',
         $s['menu_icon'],
@@ -146,7 +151,7 @@ add_action('admin_enqueue_scripts', function (string $hook) {
 });
 
 function evk_inbox_render_page(): void {
-    if (!current_user_can('manage_options')) return;
+    if (!evk_inbox_can()) return;
     require EVOKE_ONE_DIR . 'includes/admin/forminbox-page.php';
 }
 
@@ -465,7 +470,7 @@ function evk_inbox_get_name(array $fields, array $s = []): string {
 
 add_action('wp_ajax_evk_inbox_forms', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
     if (!evk_inbox_table_exists()) wp_send_json_error('no_table');
 
     global $wpdb;
@@ -497,7 +502,7 @@ add_action('wp_ajax_evk_inbox_forms', function () {
 
 add_action('wp_ajax_evk_inbox_list', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
     if (!evk_inbox_table_exists()) wp_send_json_error('no_table');
 
     global $wpdb;
@@ -548,7 +553,7 @@ add_action('wp_ajax_evk_inbox_list', function () {
 
 add_action('wp_ajax_evk_inbox_detail', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
     if (!evk_inbox_table_exists()) wp_send_json_error('no_table');
 
     global $wpdb;
@@ -610,7 +615,7 @@ add_action('wp_ajax_evk_inbox_detail', function () {
 
 add_action('wp_ajax_evk_inbox_mark', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
     $ids   = array_map('intval', (array)($_POST['ids'] ?? []));
     $state = sanitize_key($_POST['state'] ?? 'read');
     if ($state === 'unread') evk_inbox_mark_unread($ids);
@@ -624,7 +629,7 @@ add_action('wp_ajax_evk_inbox_mark', function () {
 
 add_action('wp_ajax_evk_inbox_delete', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
     if (!evk_inbox_table_exists()) wp_send_json_error('no_table');
 
     global $wpdb;
@@ -642,7 +647,7 @@ add_action('wp_ajax_evk_inbox_delete', function () {
 
 add_action('wp_ajax_evk_inbox_field_keys', function () {
     check_ajax_referer('evk_inbox_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error('forbidden', 403);
+    if (!evk_inbox_can()) wp_send_json_error('forbidden', 403);
 
     if (!evk_inbox_table_exists()) { wp_send_json_success(['keys' => []]); }
 
@@ -669,7 +674,7 @@ add_action('admin_init', function () {
     if (
         !is_admin()
         || ($_GET['action'] ?? '') !== 'evk_inbox_export'
-        || !current_user_can('manage_options')
+        || !evk_inbox_can()
         || empty($_GET['_wpnonce'])
         || !wp_verify_nonce($_GET['_wpnonce'], 'evk_inbox_export')
     ) return;

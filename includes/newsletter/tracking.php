@@ -22,6 +22,10 @@ if (!defined('ABSPATH')) exit;
 // =========================================================================
 
 add_action('init', function (): void {
+    // Nowe (z campaign_id) — muszą poprzedzać legacy
+    add_rewrite_rule('^nl/open/([0-9]+)/([a-zA-Z0-9]+)/?$',  'index.php?evk_nl=open&evk_nl_campaign=$matches[1]&evk_nl_token=$matches[2]',  'top');
+    add_rewrite_rule('^nl/click/([0-9]+)/([a-zA-Z0-9]+)/?$', 'index.php?evk_nl=click&evk_nl_campaign=$matches[1]&evk_nl_token=$matches[2]', 'top');
+    add_rewrite_rule('^nl/confirm/([a-zA-Z0-9]+)/?$',        'index.php?evk_nl=confirm&evk_nl_token=$matches[1]', 'top');
     add_rewrite_rule(
         '^nl/open/([a-zA-Z0-9]+)/?$',
         'index.php?evk_nl=open&evk_nl_token=$matches[1]',
@@ -74,16 +78,16 @@ function evk_nl_dispatcher(\WP $wp): void {
         : sanitize_text_field($_GET['evk_nl_token'] ?? '');
     if (empty($token)) return;
 
+    $campaign_id = (int) (!empty($wp->query_vars['evk_nl_campaign'])
+        ? $wp->query_vars['evk_nl_campaign']
+        : ($_GET['evk_nl_campaign'] ?? 0));
+
     switch ($action) {
-        case 'open':  evk_nl_handle_open($token);  break;
-        case 'click': evk_nl_handle_click($token); break;
-        case 'unsub': evk_nl_handle_unsub($token); break;
-        case 'view':
-            $campaign_id = (int) (!empty($wp->query_vars['evk_nl_campaign'])
-                ? $wp->query_vars['evk_nl_campaign']
-                : ($_GET['evk_nl_campaign'] ?? 0));
-            evk_nl_handle_view($campaign_id, $token);
-            break;
+        case 'open':    evk_nl_handle_open($token, $campaign_id);  break;
+        case 'click':   evk_nl_handle_click($token, $campaign_id); break;
+        case 'unsub':   evk_nl_handle_unsub($token); break;
+        case 'confirm': evk_nl_handle_confirm($token); break;
+        case 'view':    evk_nl_handle_view($campaign_id, $token); break;
     }
 }
 
@@ -91,40 +95,36 @@ function evk_nl_dispatcher(\WP $wp): void {
 // OPEN TRACKING — pixel GIF
 // =========================================================================
 
-function evk_nl_handle_open(string $token): void {
+function evk_nl_handle_open(string $token, int $campaign_id = 0): void {
     $sub = evk_nl_get_subscriber_by_token($token);
 
     if ($sub) {
         global $wpdb;
-        $q = evk_nl_table('queue');
+        $q   = evk_nl_table('queue');
+        $sid = (int) $sub['id'];
 
-        $updated = $wpdb->query($wpdb->prepare(
-            "UPDATE $q
-             SET status = 'opened', opened_at = NOW()
-             WHERE subscriber_id = %d
-               AND status IN ('sent', 'pending')
-               AND opened_at IS NULL",
-            $sub['id']
-        ));
+        if (!$campaign_id) {
+            $campaign_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT campaign_id FROM $q WHERE subscriber_id=%d ORDER BY id DESC LIMIT 1", $sid
+            ));
+        }
 
-        $queue_row = $wpdb->get_row($wpdb->prepare(
-            "SELECT campaign_id FROM $q
-             WHERE subscriber_id = %d
-             ORDER BY id DESC LIMIT 1",
-            $sub['id']
-        ), ARRAY_A);
-
-        if ($queue_row) {
-            evk_nl_log(
-                (int) $queue_row['campaign_id'],
-                'open',
-                (int) $sub['id'],
-                ['first' => (bool) $updated]
-            );
+        if ($campaign_id) {
+            $now   = current_time('mysql');
+            $first = $wpdb->query($wpdb->prepare(
+                "UPDATE $q SET opened_at=%s WHERE campaign_id=%d AND subscriber_id=%d AND opened_at IS NULL",
+                $now, $campaign_id, $sid
+            ));
+            // Status: WYŁĄCZNIE sent -> opened (nigdy pending ani clicked)
+            $wpdb->query($wpdb->prepare(
+                "UPDATE $q SET status='opened' WHERE campaign_id=%d AND subscriber_id=%d AND status='sent'",
+                $campaign_id, $sid
+            ));
+            evk_nl_log($campaign_id, 'open', $sid, ['first' => (bool) $first]);
         }
     }
 
-    if (ob_get_level()) ob_end_clean();
+    while (ob_get_level()) ob_end_clean();
 
     header('Content-Type: image/gif');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -140,42 +140,39 @@ function evk_nl_handle_open(string $token): void {
 // CLICK TRACKING — redirect
 // =========================================================================
 
-function evk_nl_handle_click(string $token): void {
+function evk_nl_handle_click(string $token, int $campaign_id = 0): void {
     $target_url = esc_url_raw(wp_unslash($_GET['url'] ?? ''));
-    $sub        = evk_nl_get_subscriber_by_token($token);
+    $sig        = sanitize_text_field(wp_unslash($_GET['sig'] ?? ''));
 
-    if ($sub) {
+    $valid = ($target_url !== '' && wp_http_validate_url($target_url));
+    // Podpisany link (nowe maile) — wymagaj poprawnego HMAC, blokuj open-redirect.
+    // Brak podpisu = legacy link ze starych wysyłek — przepuść po walidacji URL.
+    if ($valid && $sig !== '') {
+        $expected = hash_hmac('sha256', $campaign_id . '|' . $target_url, wp_salt('auth'));
+        if (!hash_equals($expected, $sig)) $valid = false;
+    }
+
+    $sub = evk_nl_get_subscriber_by_token($token);
+    if ($sub && $valid) {
         global $wpdb;
-        $q = evk_nl_table('queue');
-
-        $queue_row = $wpdb->get_row($wpdb->prepare(
-            "SELECT campaign_id FROM $q
-             WHERE subscriber_id = %d
-             ORDER BY id DESC LIMIT 1",
-            $sub['id']
-        ), ARRAY_A);
-
-        if ($queue_row) {
-            evk_nl_log(
-                (int) $queue_row['campaign_id'],
-                'click',
-                (int) $sub['id'],
-                ['url' => $target_url]
-            );
+        $q   = evk_nl_table('queue');
+        $sid = (int) $sub['id'];
+        if (!$campaign_id) {
+            $campaign_id = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT campaign_id FROM $q WHERE subscriber_id=%d ORDER BY id DESC LIMIT 1", $sid
+            ));
+        }
+        if ($campaign_id) {
+            evk_nl_log($campaign_id, 'click', $sid, ['url' => $target_url]);
             $wpdb->query($wpdb->prepare(
-                "UPDATE $q
-                 SET status = 'clicked'
-                 WHERE subscriber_id = %d
-                   AND campaign_id = %d
-                   AND status IN ('sent', 'opened')",
-                $sub['id'],
-                $queue_row['campaign_id']
+                "UPDATE $q SET status='clicked' WHERE campaign_id=%d AND subscriber_id=%d AND status IN ('sent','opened')",
+                $campaign_id, $sid
             ));
         }
     }
 
-    $redirect = ($target_url && wp_http_validate_url($target_url)) ? $target_url : home_url();
-    wp_redirect($redirect, 302);
+    header('Referrer-Policy: no-referrer'); // nie wyciekaj tokenu do strony docelowej
+    wp_redirect($valid ? $target_url : home_url(), 302);
     exit;
 }
 
@@ -185,8 +182,21 @@ function evk_nl_handle_click(string $token): void {
 
 function evk_nl_handle_unsub(string $token): void {
     $sub     = evk_nl_get_subscriber_by_token($token);
-    $success = false;
+    $is_post = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST');
 
+    // GET + aktywny subskrybent → strona potwierdzenia (chroni przed skanerami linkow,
+    // SafeLinks, prefetchem itp., ktore podazaja za linkami w mailu).
+    if (!$is_post && $sub && (int) $sub['status'] === 1) {
+        while (ob_get_level()) ob_end_clean();
+        http_response_code(200);
+        header('Content-Type: text/html; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        echo evk_nl_unsub_confirm_html(esc_html($sub['email']), esc_url(evk_nl_unsubscribe_url($token)));
+        exit;
+    }
+
+    // POST (one-click z naglowka List-Unsubscribe lub formularz) / GET dla juz-wypisanych
+    $success = false;
     if ($sub) {
         if ((int) $sub['status'] === 1) {
             $success = evk_nl_unsubscribe_by_token($token);
@@ -194,9 +204,7 @@ function evk_nl_handle_unsub(string $token): void {
                 global $wpdb;
                 $q = evk_nl_table('queue');
                 $queue_row = $wpdb->get_row($wpdb->prepare(
-                    "SELECT campaign_id FROM $q
-                     WHERE subscriber_id = %d
-                     ORDER BY id DESC LIMIT 1",
+                    "SELECT campaign_id FROM $q WHERE subscriber_id = %d ORDER BY id DESC LIMIT 1",
                     $sub['id']
                 ), ARRAY_A);
                 if ($queue_row) {
@@ -204,14 +212,13 @@ function evk_nl_handle_unsub(string $token): void {
                 }
             }
         } else {
-            $success = true; // Już wypisany
+            $success = true; // Juz wypisany
         }
     }
 
     $email = $sub ? esc_html($sub['email']) : '';
 
     while (ob_get_level()) ob_end_clean();
-
     http_response_code(200);
     header('Content-Type: text/html; charset=UTF-8');
     header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -363,20 +370,22 @@ function evk_nl_view_url(int $campaign_id, string $token = ''): string {
     return add_query_arg($args, home_url('/'));
 }
 
-function evk_nl_open_url(string $token): string {
+function evk_nl_open_url(string $token, int $campaign_id = 0): string {
     $rules = get_option('rewrite_rules', []);
-    if (!empty($rules) && isset($rules['^nl/open/([a-zA-Z0-9]+)/?$'])) {
-        return home_url('/nl/open/' . $token . '/');
+    if (!empty($rules) && isset($rules['^nl/open/([0-9]+)/([a-zA-Z0-9]+)/?$'])) {
+        return home_url('/nl/open/' . $campaign_id . '/' . $token . '/');
     }
-    return add_query_arg(['evk_nl' => 'open', 'evk_nl_token' => $token], home_url('/'));
+    return add_query_arg(['evk_nl' => 'open', 'evk_nl_campaign' => $campaign_id, 'evk_nl_token' => $token], home_url('/'));
 }
 
-function evk_nl_click_url(string $token, string $target): string {
-    $rules = get_option('rewrite_rules', []);
-    if (!empty($rules) && isset($rules['^nl/click/([a-zA-Z0-9]+)/?$'])) {
-        return home_url('/nl/click/' . $token . '/') . '?url=' . rawurlencode($target);
+function evk_nl_click_url(string $token, string $target, int $campaign_id = 0): string {
+    $target = esc_url_raw($target);
+    $sig    = hash_hmac('sha256', $campaign_id . '|' . $target, wp_salt('auth'));
+    $rules  = get_option('rewrite_rules', []);
+    if (!empty($rules) && isset($rules['^nl/click/([0-9]+)/([a-zA-Z0-9]+)/?$'])) {
+        return home_url('/nl/click/' . $campaign_id . '/' . $token . '/') . '?url=' . rawurlencode($target) . '&sig=' . $sig;
     }
-    return add_query_arg(['evk_nl' => 'click', 'evk_nl_token' => $token, 'url' => $target], home_url('/'));
+    return add_query_arg(['evk_nl' => 'click', 'evk_nl_campaign' => $campaign_id, 'evk_nl_token' => $token, 'url' => $target, 'sig' => $sig], home_url('/'));
 }
 
 function evk_nl_unsubscribe_url(string $token): string {
@@ -392,9 +401,12 @@ function evk_nl_unsubscribe_url(string $token): string {
 // =========================================================================
 
 // Wersja reguł rewrite — zmień gdy dodajesz nowe reguły
-define('EVK_NL_REWRITE_VERSION', '1.2');
+define('EVK_NL_REWRITE_VERSION', '1.3');
 
 function evk_nl_flush_rewrite(): void {
+    add_rewrite_rule('^nl/open/([0-9]+)/([a-zA-Z0-9]+)/?$',  'index.php?evk_nl=open&evk_nl_campaign=$matches[1]&evk_nl_token=$matches[2]',  'top');
+    add_rewrite_rule('^nl/click/([0-9]+)/([a-zA-Z0-9]+)/?$', 'index.php?evk_nl=click&evk_nl_campaign=$matches[1]&evk_nl_token=$matches[2]', 'top');
+    add_rewrite_rule('^nl/confirm/([a-zA-Z0-9]+)/?$',        'index.php?evk_nl=confirm&evk_nl_token=$matches[1]', 'top');
     add_rewrite_rule('^nl/open/([a-zA-Z0-9]+)/?$',  'index.php?evk_nl=open&evk_nl_token=$matches[1]',  'top');
     add_rewrite_rule('^nl/click/([a-zA-Z0-9]+)/?$', 'index.php?evk_nl=click&evk_nl_token=$matches[1]', 'top');
     add_rewrite_rule('^nl/unsub/([a-zA-Z0-9]+)/?$', 'index.php?evk_nl=unsub&evk_nl_token=$matches[1]', 'top');
@@ -410,3 +422,97 @@ add_action('init', function (): void {
         evk_nl_flush_rewrite();
     }
 }, 99);
+
+// =========================================================================
+// CONFIRM (double opt-in)
+// =========================================================================
+
+function evk_nl_confirm_url(string $token): string {
+    $rules = get_option('rewrite_rules', []);
+    if (!empty($rules) && isset($rules['^nl/confirm/([a-zA-Z0-9]+)/?$'])) {
+        return home_url('/nl/confirm/' . $token . '/');
+    }
+    return add_query_arg(['evk_nl' => 'confirm', 'evk_nl_token' => $token], home_url('/'));
+}
+
+function evk_nl_handle_confirm(string $token): void {
+    $sub = evk_nl_get_subscriber_by_token($token);
+    $ok  = false;
+    if ($sub) {
+        $st = (int) $sub['status'];
+        if ($st === 2)      { $ok = evk_nl_confirm_subscriber($token); }
+        elseif ($st === 1)  { $ok = true; }
+    }
+    while (ob_get_level()) ob_end_clean();
+    http_response_code(200);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    echo evk_nl_confirm_html($ok, $sub ? esc_html($sub['email']) : '');
+    exit;
+}
+
+function evk_nl_confirm_html(bool $ok, string $email): string {
+    $icon  = $ok ? '✅' : '❌';
+    $title = $ok ? 'Zapis potwierdzony' : 'Nieprawidłowy link';
+    if ($ok && $email) {
+        $msg = 'Adres <strong>' . $email . '</strong> został potwierdzony. Dziękujemy!';
+    } elseif ($ok) {
+        $msg = 'Twój zapis został potwierdzony. Dziękujemy!';
+    } else {
+        $msg = 'Link jest nieprawidłowy lub wygasł.';
+    }
+    $home = esc_url(home_url());
+    $site = esc_html(get_bloginfo('name'));
+    return evk_nl_status_page($icon, $title, $msg, $home, $site);
+}
+
+function evk_nl_unsub_confirm_html(string $email, string $action_url): string {
+    $home = esc_url(home_url());
+    $site = esc_html(get_bloginfo('name'));
+    $who  = $email ? 'adresu <strong>' . $email . '</strong>' : 'tego adresu';
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Wypisanie z newslettera — {$site}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f1f5f9;}
+.card{background:#fff;border-radius:16px;padding:52px 44px;max-width:500px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.10);}
+.icon{font-size:56px;line-height:1;margin-bottom:20px;}
+h1{font-size:22px;font-weight:700;color:#1e293b;margin:0 0 12px;}
+p{color:#64748b;font-size:15px;line-height:1.7;margin:0 0 28px;}strong{color:#1e293b;}
+.btn{display:inline-block;background:#dc2626;color:#fff;padding:13px 32px;border:0;border-radius:10px;cursor:pointer;text-decoration:none;font-weight:600;font-size:15px;font-family:inherit;}
+.btn:hover{background:#b91c1c;}
+.link{display:inline-block;margin-top:16px;color:#64748b;font-size:13px;}
+.footer{margin-top:28px;font-size:12px;color:#94a3b8;}
+</style></head>
+<body><div class="card">
+<div class="icon">✉️</div>
+<h1>Wypisać z newslettera?</h1>
+<p>Czy na pewno chcesz wypisać {$who} z naszego newslettera?</p>
+<form method="post" action="{$action_url}"><button type="submit" class="btn">Tak, wypisz mnie</button></form>
+<a class="link" href="{$home}">Nie, wróć na stronę</a>
+<div class="footer">{$site}</div>
+</div></body></html>
+HTML;
+}
+
+function evk_nl_status_page(string $icon, string $title, string $msg, string $home, string $site): string {
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>{$title} — {$site}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f1f5f9;}
+.card{background:#fff;border-radius:16px;padding:52px 44px;max-width:500px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.10);}
+.icon{font-size:56px;line-height:1;margin-bottom:20px;}
+h1{font-size:22px;font-weight:700;color:#1e293b;margin:0 0 12px;}
+p{color:#64748b;font-size:15px;line-height:1.7;margin:0 0 28px;}strong{color:#1e293b;}
+.btn{display:inline-block;background:#2563eb;color:#fff;padding:13px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;}
+.btn:hover{background:#1d4ed8;}.footer{margin-top:28px;font-size:12px;color:#94a3b8;}
+</style></head>
+<body><div class="card"><div class="icon">{$icon}</div><h1>{$title}</h1><p>{$msg}</p>
+<a href="{$home}" class="btn">Wróć na stronę główną</a><div class="footer">{$site}</div></div></body></html>
+HTML;
+}

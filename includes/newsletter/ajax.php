@@ -239,9 +239,11 @@ add_action('wp_ajax_evk_nl_export_logs', function () {
     header('Content-Disposition: attachment; filename="kampania-' . $campaign_id . '-logi.csv"');
 
     $out = fopen('php://output', 'w');
+    fprintf($out, "\xEF\xBB\xBF"); // BOM dla Excela
+    $san = function ($v) { $v = (string) $v; return preg_match('/^[=+\-@]/', $v) ? "'" . $v : $v; };
     fputcsv($out, ['ID', 'Event', 'Subscriber ID', 'Data', 'Czas']);
     foreach ($logs as $row) {
-        fputcsv($out, [$row['id'], $row['event'], $row['subscriber_id'], $row['data_json'], $row['created_at']]);
+        fputcsv($out, array_map($san, [$row['id'], $row['event'], $row['subscriber_id'], $row['data_json'], $row['created_at']]));
     }
     fclose($out);
     exit;

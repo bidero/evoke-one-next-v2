@@ -252,12 +252,76 @@ function evk_nl_get_campaign_subscribers(array $list_ids): array {
     $t            = evk_nl_table('subscribers');
     $ids_escaped  = implode(',', array_map('intval', $list_ids));
 
-    // GROUP BY email żeby uniknąć duplikatów
+    // Dedup po email — bierzemy SPOJNY wiersz (MIN(id) i jego wlasny token/fields)
     return $wpdb->get_results(
-        "SELECT MIN(id) as id, email, MIN(token) as token, MIN(fields_json) as fields_json
-         FROM $t
-         WHERE list_id IN ($ids_escaped) AND status=1
-         GROUP BY email",
+        "SELECT s.id, s.email, s.token, s.fields_json
+         FROM $t s
+         INNER JOIN (
+             SELECT MIN(id) AS mid FROM $t
+             WHERE list_id IN ($ids_escaped) AND status=1
+             GROUP BY email
+         ) m ON s.id = m.mid",
         ARRAY_A
     ) ?: [];
+}
+
+// =========================================================================
+// DOUBLE OPT-IN — pending subscriber + potwierdzenie
+// =========================================================================
+
+/**
+ * Dodaje subskrybenta w stanie oczekujacym (status=2) do potwierdzenia.
+ * Zwraca ['ok'=>bool, 'status'=>int, 'token'=>string].
+ */
+function evk_nl_add_pending_subscriber(int $list_id, string $email, array $consent = []): array {
+    global $wpdb;
+    $email = sanitize_email($email);
+    if (!is_email($email)) return ['ok' => false];
+
+    $t = evk_nl_table('subscribers');
+    $existing = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, status, token FROM $t WHERE list_id=%d AND email=%s", $list_id, $email
+    ), ARRAY_A);
+
+    if ($existing) {
+        if ((int) $existing['status'] === 1) {
+            return ['ok' => true, 'status' => 1, 'token' => $existing['token']];
+        }
+        // pending lub wypisany → ustaw pending i odswiez zgode
+        $wpdb->update($t, [
+            'status'          => 2,
+            'fields_json'     => wp_json_encode($consent),
+            'unsubscribed_at' => null,
+        ], ['id' => $existing['id']]);
+        return ['ok' => true, 'status' => 2, 'token' => $existing['token']];
+    }
+
+    $token = wp_generate_password(32, false);
+    while ($wpdb->get_var($wpdb->prepare("SELECT id FROM $t WHERE token=%s", $token))) {
+        $token = wp_generate_password(32, false);
+    }
+    $wpdb->insert($t, [
+        'list_id'     => $list_id,
+        'email'       => $email,
+        'fields_json' => wp_json_encode($consent),
+        'status'      => 2,
+        'token'       => $token,
+    ]);
+    return ['ok' => (bool) $wpdb->insert_id, 'status' => 2, 'token' => $token];
+}
+
+/**
+ * Potwierdza zapis (status 2 -> 1) i zapisuje czas potwierdzenia.
+ */
+function evk_nl_confirm_subscriber(string $token): bool {
+    global $wpdb;
+    $sub = evk_nl_get_subscriber_by_token($token);
+    if (!$sub) return false;
+    $fields = json_decode($sub['fields_json'] ?? '{}', true) ?: [];
+    $fields['_confirmed_at'] = current_time('mysql');
+    return (bool) $wpdb->update(evk_nl_table('subscribers'), [
+        'status'          => 1,
+        'unsubscribed_at' => null,
+        'fields_json'     => wp_json_encode($fields),
+    ], ['id' => $sub['id']]);
 }
