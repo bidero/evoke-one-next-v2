@@ -66,7 +66,7 @@ function evk_inbox_unread_count(): int {
         $ph = implode(',', array_fill(0, count($read), '%d'));
         $n  = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE id NOT IN ($ph)", $read));
     }
-    set_transient('evk_inbox_unread', $n, 60);
+    set_transient('evk_inbox_unread', $n, 30);
     return $n;
 }
 
@@ -715,8 +715,17 @@ add_action('admin_init', function () {
     $table   = evk_inbox_table();
     $s       = evk_inbox_get_settings();
     $form_id = sanitize_text_field($_GET['form_id'] ?? '');
-    $where   = ($form_id && $form_id !== 'all') ? $wpdb->prepare('WHERE form_id = %s', $form_id) : '';
-    $rows    = $wpdb->get_results("SELECT * FROM {$table} {$where} ORDER BY created_at DESC");
+    $from    = sanitize_text_field($_GET['from'] ?? '');
+    $to      = sanitize_text_field($_GET['to'] ?? '');
+
+    $cond = []; $params = [];
+    if ($form_id && $form_id !== 'all') { $cond[] = 'form_id = %s';     $params[] = $form_id; }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) { $cond[] = 'created_at >= %s'; $params[] = $from . ' 00:00:00'; }
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to))   { $cond[] = 'created_at <= %s'; $params[] = $to . ' 23:59:59'; }
+    $where = $cond ? ('WHERE ' . implode(' AND ', $cond)) : '';
+    $rows  = $where
+        ? $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} {$where} ORDER BY created_at DESC", $params))
+        : $wpdb->get_results("SELECT * FROM {$table} ORDER BY created_at DESC");
 
     $all_keys = [];
     foreach ($rows as $row) {

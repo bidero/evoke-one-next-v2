@@ -433,6 +433,12 @@ add_action('wp_ajax_tl_import', function () {
         $imported++;
     }
 
+    // Skrzynka wiadomości — pełne ustawienia (w tym header_layout, sidebar_layout, subject_field)
+    if ($should('evk_forminbox') && isset($data['evk_forminbox']) && is_array($data['evk_forminbox'])) {
+        update_option('evk_forminbox', $data['evk_forminbox']);
+        $imported++;
+    }
+
     // Newsletter — ustawienia + tabele DB
     if ($should('evk_newsletter') && isset($data['evk_newsletter'])) {
         global $wpdb;

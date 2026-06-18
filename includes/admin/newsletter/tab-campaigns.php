@@ -127,7 +127,7 @@ $status_labels = [
     <div class="evk-nl-actions">
         <button class="button button-primary" id="evk-nl-save-camp">Zapisz draft</button>
         <?php if ($edit_camp): ?>
-            <button class="button evk-nl-preview" data-url="<?php echo esc_url(home_url('/nl/view/' . (int) $edit_camp['id'] . '/')); ?>" style="display:inline-flex;align-items:center;gap:5px;"><span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;line-height:0;display:block;"></span> Podgląd</button>
+            <button class="button evk-nl-preview" data-url="<?php echo esc_url(add_query_arg(['evk_nl' => 'view', 'evk_nl_campaign' => (int) $edit_camp['id']], home_url('/'))); ?>" style="display:inline-flex;align-items:center;gap:5px;"><span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;line-height:1;"></span> Podgląd</button>
             <?php if (in_array($st, ['draft', 'scheduled'])): ?>
             <button class="button button-primary" id="evk-nl-launch-now"
                     style="background:#16a34a;border-color:#16a34a;">▶ Uruchom teraz</button>
@@ -196,7 +196,7 @@ $status_labels = [
                     $pct   = $stats['total'] > 0 ? round($stats['sent'] / $stats['total'] * 100) : 0;
                     $rep_url  = add_query_arg(['subtab' => 'reports',   'campaign_id' => $c['id']], admin_url('options-general.php?page=evoke-one&tab=newsletter'));
                     $edit_url = add_query_arg(['subtab' => 'campaigns', 'campaign_id' => $c['id']], admin_url('options-general.php?page=evoke-one&tab=newsletter'));
-                    $view_url = home_url('/nl/view/' . $c['id'] . '/');
+                    $view_url = add_query_arg(['evk_nl' => 'view', 'evk_nl_campaign' => (int) $c['id']], home_url('/'));
                 ?>
                 <tr data-id="<?php echo (int) $c['id']; ?>" data-status="<?php echo esc_attr($c['status']); ?>">
                     <td><input type="checkbox" class="evk-nl-camp-cb" data-id="<?php echo (int) $c['id']; ?>"></td>

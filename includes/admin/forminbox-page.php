@@ -39,6 +39,8 @@ $table_ok   = evk_inbox_table_exists();
         <button id="evk-bulk-delete-btn" class="evk-inbox-btn evk-inbox-btn-danger" style="display:none;">
             <span class="dashicons dashicons-trash"></span> Usuń zaznaczone
         </button>
+        <input type="date" id="evk-export-from" title="Eksport od" style="height:32px;border:1px solid #cbd5e1;border-radius:6px;padding:0 6px;font-size:12px;color:#475569;">
+        <input type="date" id="evk-export-to" title="Eksport do" style="height:32px;border:1px solid #cbd5e1;border-radius:6px;padding:0 6px;font-size:12px;color:#475569;">
         <button id="evk-export-btn" class="evk-inbox-btn evk-inbox-btn-ghost" <?php echo !$table_ok ? 'disabled' : ''; ?>>
             <span class="dashicons dashicons-download"></span> CSV
         </button>
@@ -587,7 +589,11 @@ $table_ok   = evk_inbox_table_exists();
 
     // Export CSV
     document.getElementById('evk-export-btn').addEventListener('click', function() {
-        const url = EXPORT_URL + '&form_id=' + encodeURIComponent(state.form_id);
+        let url = EXPORT_URL + '&form_id=' + encodeURIComponent(state.form_id);
+        const efrom = document.getElementById('evk-export-from').value;
+        const eto   = document.getElementById('evk-export-to').value;
+        if (efrom) url += '&from=' + encodeURIComponent(efrom);
+        if (eto)   url += '&to=' + encodeURIComponent(eto);
         window.location.href = url;
     });
 

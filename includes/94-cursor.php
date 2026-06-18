@@ -30,7 +30,8 @@ class EVK_Cursor {
     }
 
     private function __construct() {
-        add_action('admin_init',         [$this, 'register_settings']);
+        add_action('admin_init', [$this, 'register_settings']);
+        if (empty($this->get_settings()['enabled'])) return; // nie ładuj asetów gdy wyłączone
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets'], 99);
     }
 

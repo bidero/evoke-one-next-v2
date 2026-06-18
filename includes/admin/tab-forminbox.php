@@ -43,7 +43,7 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
     <span class="dashicons dashicons-yes-alt" style="color:#16a34a;"></span>
     <div>Moduł aktywny.
         <a href="<?php echo esc_url($inbox_url); ?>" class="button button-secondary" style="margin-left:10px;display:inline-flex;align-items:center;gap:5px;vertical-align:middle;">
-            <span class="dashicons dashicons-email-alt" style="font-size:16px;width:16px;height:16px;line-height:0;display:block;"></span>
+            <span class="dashicons dashicons-email-alt" style="font-size:16px;width:16px;height:16px;line-height:1;"></span>
             Otwórz skrzynkę
         </a>
     </div>
