@@ -14,6 +14,7 @@ $subs = [
     'cursor'      => ['label' => 'Kursor',        'icon' => 'dashicons-arrow-up-alt'],
     'lenis'       => ['label' => 'Smooth Scroll', 'icon' => 'dashicons-sort'],
     'a11y'        => ['label' => 'Dostępność',    'icon' => 'dashicons-universal-access'],
+    'elementy'    => ['label' => 'Elementy Bricks', 'icon' => 'dashicons-screenoptions'],
 ];
 
 if (!array_key_exists($sub, $subs)) $sub = 'maintenance';

@@ -1,0 +1,61 @@
+/* EVK Horizontal Scroll
+ * Domyślnie (mobile / edytor / brak JS): panele ułożone pionowo = naturalny scroll strony.
+ * Po inicjalizacji JS (.evk-hscroll--active): panele w poziomie + przypięcie.
+ */
+
+.evk-hscroll {
+	position: relative;
+	width: 100%;
+}
+
+.evk-hscroll__track {
+	display: flex;
+	flex-direction: column;
+}
+
+/* ── Tryb aktywny: poziomy ─────────────────────────────────────────────── */
+.evk-hscroll--active {
+	overflow: hidden;
+	height: 100vh;
+}
+
+.evk-hscroll--active .evk-hscroll__track {
+	flex-direction: row;
+	flex-wrap: nowrap;
+	height: 100vh;
+	will-change: transform;
+}
+
+/* Każdy bezpośredni potomek = panel. Szerokość ustawia JS inline. */
+.evk-hscroll--active .evk-hscroll__track > * {
+	flex: 0 0 auto;
+	min-height: var(--evk-panel-h, 100vh);
+	height: var(--evk-panel-h, 100vh);
+}
+
+/* ── Pasek postępu ─────────────────────────────────────────────────────── */
+.evk-hscroll__progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 4px;
+	background-color: rgba(0, 0, 0, 0.15);
+	z-index: 10;
+	overflow: hidden;
+}
+
+.evk-hscroll__progress--top {
+	top: 0;
+}
+
+.evk-hscroll__progress--bottom {
+	bottom: 0;
+}
+
+.evk-hscroll__progress-bar {
+	height: 100%;
+	background-color: currentColor;
+	transform: scaleX(0);
+	transform-origin: left center;
+	will-change: transform;
+}

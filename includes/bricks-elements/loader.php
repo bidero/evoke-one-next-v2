@@ -1,0 +1,162 @@
+<?php
+if (!defined('ABSPATH')) exit;
+/**
+ * Evoke ONE — Elementy Bricks (zintegrowane elementy + wspólne biblioteki)
+ *
+ * - Każdy element ma osobny włącznik (opcja evk_elements, domyślnie OFF).
+ * - Wspólne biblioteki (GSAP / ScrollTrigger / Observer) rejestrowane raz pod
+ *   stałymi handle'ami — dzięki temu nie dublują się między elementami.
+ * - Guard coexistence: jeśli samodzielna wtyczka elementu jest aktywna
+ *   (klasa już istnieje), Evoke ONE pomija rejestrację (zero konfliktu).
+ */
+
+function evk_elements_registry(): array {
+    $dir = EVOKE_ONE_DIR . 'includes/bricks-elements/';
+    $url = EVOKE_ONE_URL . 'includes/bricks-elements/';
+
+    return [
+        'marquee' => [
+            'label' => 'Marquee',
+            'desc'  => 'Nieskończony marquee z przyspieszeniem przy scrollu.',
+            'icon'  => 'dashicons-controls-repeat',
+            'class' => 'Evk_Marquee_Element',
+            'name'  => 'evk-marquee',
+            'file'  => $dir . 'evoke-marquee/element.php',
+            'consts'=> [
+                'EVK_MARQUEE_VERSION' => '1.5.1',
+                'EVK_MARQUEE_URL'     => $url . 'evoke-marquee/',
+                'EVK_MARQUEE_PATH'    => $dir . 'evoke-marquee/',
+            ],
+            'script'=> ['evk-marquee', $url . 'evoke-marquee/assets/marquee.js', ['evk-gsap', 'evk-observer'], '1.5.1'],
+            'style' => ['evk-marquee', $url . 'evoke-marquee/assets/marquee.css', '1.5.1'],
+        ],
+        'hscroll' => [
+            'label' => 'Horizontal Scroll',
+            'desc'  => 'Poziomy scroll z GSAP ScrollTrigger (pin + snap).',
+            'icon'  => 'dashicons-leftright',
+            'class' => 'Evk_Horizontal_Scroll_Element',
+            'name'  => 'evk-horizontal-scroll',
+            'file'  => $dir . 'evoke-horizontal-scroll/element.php',
+            'consts'=> [
+                'EVK_HSCROLL_VERSION' => '1.1.1',
+                'EVK_HSCROLL_URL'     => $url . 'evoke-horizontal-scroll/',
+                'EVK_HSCROLL_PATH'    => $dir . 'evoke-horizontal-scroll/',
+            ],
+            'script'=> ['evk-horizontal-scroll', $url . 'evoke-horizontal-scroll/assets/hscroll.js', ['evk-gsap', 'evk-scrolltrigger'], '1.1.1'],
+            'style' => ['evk-horizontal-scroll', $url . 'evoke-horizontal-scroll/assets/hscroll.css', '1.1.1'],
+        ],
+        'scroll_reading' => [
+            'label' => 'Scroll Reading',
+            'desc'  => 'Tekst rozjaśniany przy scrollu (SplitText z Bricks Animator).',
+            'icon'  => 'dashicons-editor-textcolor',
+            'class' => 'Evk_Scroll_Reading_Element',
+            'name'  => 'evk-scroll-reading',
+            'file'  => $dir . 'evoke-scroll-reading/element.php',
+            'consts'=> [
+                'EVK_SR_VERSION' => '1.0.1',
+                'EVK_SR_URL'     => $url . 'evoke-scroll-reading/',
+                'EVK_SR_PATH'    => $dir . 'evoke-scroll-reading/',
+            ],
+            'script'=> ['evk-scroll-reading', $url . 'evoke-scroll-reading/assets/scroll-reading.js', ['evk-gsap', 'evk-scrolltrigger'], '1.0.1'],
+            'style' => ['evk-scroll-reading', $url . 'evoke-scroll-reading/assets/scroll-reading.css', '1.0.1'],
+        ],
+        'circular_title' => [
+            'label' => 'Circular Title',
+            'desc'  => 'Tekst po okręgu reagujący na prędkość scrolla (Lenis).',
+            'icon'  => 'dashicons-image-rotate',
+            'class' => 'Evk_Circular_Title',
+            'name'  => '', // register_element(file) — Bricks odczyta klasę z pliku
+            'file'  => $dir . 'evoke-circular-title/element.php',
+            'consts'=> [
+                'EVK_CIRCULAR_VERSION' => '1.1.5',
+                'EVK_CIRCULAR_URL'     => $url . 'evoke-circular-title/',
+                'EVK_CIRCULAR_PATH'    => $dir . 'evoke-circular-title/',
+            ],
+            // asety: self-enqueue w element.php (EVK_CIRCULAR_URL)
+        ],
+        'circular_menu' => [
+            'label' => 'Circular Menu',
+            'desc'  => 'Menu z animacją clip-path (portal do body).',
+            'icon'  => 'dashicons-menu-alt',
+            'class' => 'Evoke_Circular_Menu',
+            'name'  => 'evoke-circular-menu',
+            'file'  => $dir . 'evoke-circular-menu/element-circular-menu.php',
+            'consts'=> [
+                'EVK_CIRCULAR_MENU_VERSION' => '1.0.3',
+            ],
+            // asety: self-enqueue w element.php (plugin_dir_url), gsap -> evk-gsap
+        ],
+        'wave_bg' => [
+            'label' => 'Wave Background',
+            'desc'  => 'Animowane tło gradientowe Three.js (samodzielny moduł ESM).',
+            'icon'  => 'dashicons-art',
+            'class' => 'Evk_Wave_Bg_Element',
+            'name'  => 'evk-wave-bg',
+            'file'  => $dir . 'evoke-wave-bg/element.php',
+            'consts'=> [
+                'EVK_WB_VERSION' => '1.2.0',
+                'EVK_WB_PATH'    => $dir . 'evoke-wave-bg/',
+            ],
+            // asety: self-contained ESM w render()
+        ],
+    ];
+}
+
+function evk_elements_enabled(): array {
+    $def = ['marquee' => 0, 'hscroll' => 0, 'scroll_reading' => 0, 'circular_title' => 0, 'circular_menu' => 0, 'wave_bg' => 0];
+    return array_merge($def, (array) get_option('evk_elements', []));
+}
+
+// ── Rejestracja elementów w Bricks (tylko włączone) ──────────────────────
+add_action('init', function (): void {
+    if (!class_exists('\Bricks\Elements')) return;
+
+    $reg = evk_elements_registry();
+    $en  = evk_elements_enabled();
+    $GLOBALS['evk_loaded_elements'] = [];
+
+    foreach ($reg as $key => $el) {
+        if (empty($en[$key])) continue;
+        if (class_exists($el['class'])) continue;   // samodzielna wtyczka aktywna → pomiń
+        if (!is_readable($el['file'])) continue;
+
+        foreach ($el['consts'] as $c => $v) {
+            if (!defined($c)) define($c, $v);
+        }
+
+        require_once $el['file'];
+
+        if (!empty($el['name'])) {
+            \Bricks\Elements::register_element($el['file'], $el['name'], $el['class']);
+        } else {
+            \Bricks\Elements::register_element($el['file']);
+        }
+
+        $GLOBALS['evk_loaded_elements'][$key] = true;
+    }
+}, 11);
+
+// ── Wspólne biblioteki + skrypty/style elementów ─────────────────────────
+add_action('wp_enqueue_scripts', function (): void {
+    if (!class_exists('\Bricks\Frontend')) return;
+
+    // Wspólne biblioteki — jeden handle, brak duplikatów między elementami.
+    // (Rejestracja jest tania; faktyczne pobranie tylko gdy element ich użyje.)
+    wp_register_script('evk-gsap', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js', [], '3.12.5', true);
+    wp_register_script('evk-scrolltrigger', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js', ['evk-gsap'], '3.12.5', true);
+    wp_register_script('evk-observer', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Observer.min.js', ['evk-gsap'], '3.12.5', true);
+
+    // Handle skryptów/stylów, których oczekuje element->enqueue_scripts()
+    $reg    = evk_elements_registry();
+    $loaded = $GLOBALS['evk_loaded_elements'] ?? [];
+
+    foreach ($reg as $key => $el) {
+        if (empty($loaded[$key])) continue;
+        if (!empty($el['script'])) {
+            wp_register_script($el['script'][0], $el['script'][1], $el['script'][2], $el['script'][3], true);
+        }
+        if (!empty($el['style'])) {
+            wp_register_style($el['style'][0], $el['style'][1], [], $el['style'][2]);
+        }
+    }
+}, 5);

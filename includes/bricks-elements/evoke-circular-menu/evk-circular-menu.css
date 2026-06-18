@@ -1,0 +1,50 @@
+/* Evoke Circular Menu */
+.evk-cm {
+    width: fit-content;
+    height: fit-content;
+}
+
+/* Trigger wrapper */
+.evk-cm-trigger {
+    position: relative;
+    z-index: 2;
+}
+
+/* Panel menu */
+.evk-cm-content {
+    position: fixed;
+    display: flex;
+    width: 100svw;
+    height: 100svh;
+    background: #c4c4c4;
+
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+
+    transform: none;
+    transform-origin: 50% 50% 0px;
+
+    --evk-cm-from-top: 24px;
+    --evk-cm-from-left: 24px;
+    --evk-cm-z-index: 9999;
+
+    z-index: var(--evk-cm-z-index);
+    pointer-events: none;
+    clip-path: circle(0px at var(--evk-cm-from-left) var(--evk-cm-from-top));
+    --evk-cm-clip-open: circle(150% at var(--evk-cm-from-left) var(--evk-cm-from-top));
+}
+
+/* Gdy portal=0 (bez przenoszenia) — fallback na absolute */
+.evk-cm[data-portal="0"] .evk-cm-content {
+    position: absolute;
+    inset: 0;
+}
+
+/* Builder: pokaż panel gdy "Otwórz w builderze" włączone */
+.evk-cm[data-open-builder="1"] .evk-cm-content {
+    clip-path: none !important;
+    pointer-events: auto !important;
+}

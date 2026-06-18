@@ -76,7 +76,7 @@ function evk_nl_dispatcher(\WP $wp): void {
     $token = !empty($wp->query_vars['evk_nl_token'])
         ? sanitize_text_field($wp->query_vars['evk_nl_token'])
         : sanitize_text_field($_GET['evk_nl_token'] ?? '');
-    if (empty($token)) return;
+    if ($action !== 'view' && empty($token)) return;
 
     $campaign_id = (int) (!empty($wp->query_vars['evk_nl_campaign'])
         ? $wp->query_vars['evk_nl_campaign']

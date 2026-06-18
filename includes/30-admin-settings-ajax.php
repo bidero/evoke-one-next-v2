@@ -305,6 +305,7 @@ add_action('wp_ajax_tl_export', function () {
             'evoke_move_bricks_bottom'      => get_option('evoke_move_bricks_bottom', ''),
             'evk_draft_revision_enabled'    => get_option('evk_draft_revision_enabled', ''),
             'favicon_url'                   => get_option('favicon_url', ''),
+            'evk_elements'                  => get_option('evk_elements', []),
         ],
         'evk_newsletter'      => function () {
             global $wpdb;
@@ -427,7 +428,7 @@ add_action('wp_ajax_tl_import', function () {
         $imported++;
     }
     if ($should('evk_other')) {
-        foreach (['evoke_disable_global_comments','evoke_require_reg_to_comment','evoke_move_bricks_bottom','evk_draft_revision_enabled','favicon_url'] as $k) {
+        foreach (['evoke_disable_global_comments','evoke_require_reg_to_comment','evoke_move_bricks_bottom','evk_draft_revision_enabled','favicon_url','evk_elements'] as $k) {
             if (isset($data[$k])) update_option($k, $data[$k]);
         }
         $imported++;
@@ -596,6 +597,7 @@ add_action('wp_ajax_evk_ajax_toggle', function () {
         'evk_tl_fab_enabled'             => ['_scalar'],
         'evk_forminbox'                  => ['enabled'],
         'evk_snippets_enabled'          => ['_scalar'],
+        'evk_elements'                  => ['marquee', 'hscroll', 'scroll_reading', 'circular_title', 'circular_menu', 'wave_bg'],
     ];
 
     if (!isset($allowed[$option]) || !in_array($field, $allowed[$option])) {

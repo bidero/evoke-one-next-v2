@@ -1,0 +1,289 @@
+<?php
+namespace Bricks;
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class Evoke_Circular_Menu extends \Bricks\Element {
+
+	public $category = 'general';
+	public $name     = 'evoke-circular-menu';
+	public $icon     = 'ti-menu-alt';
+	public $scripts  = ['evk_circular_menu'];
+	public $nestable = true;
+
+	public function get_label() {
+		return esc_html__( 'Evoke Circular Menu', 'evoke-circular-menu' );
+	}
+
+	public function get_keywords() {
+		return [ 'hamburger', 'menu', 'circular', 'nav', 'toggle', 'fullscreen' ];
+	}
+
+	/**
+	 * Dwa dzieci domyślne:
+	 *  1. div z klasą evk-cm-trigger  — trigger (wrzuć tu przycisk)
+	 *  2. block (div) z klasą evk-cm-content — panel menu
+	 *
+	 * JS szuka: .evk-cm-trigger  i  .evk-cm-content
+	 */
+	public function get_nestable_children() {
+		return [
+			[
+				'name'  => 'div',
+				'label' => esc_html__( 'Trigger (burger)', 'evoke-circular-menu' ),
+				'settings' => [
+					'_hidden' => [
+						'_cssClasses' => 'evk-cm-trigger',
+					],
+				],
+			],
+			[
+				'name'  => 'block',
+				'label' => esc_html__( 'Zawartość menu', 'evoke-circular-menu' ),
+				'settings' => [
+					'_hidden' => [
+						'_cssClasses' => 'evk-cm-content',
+					],
+				],
+			],
+		];
+	}
+
+	public function set_controls() {
+
+		$this->controls['openbuilder'] = [
+			'hasDynamicData' => false,
+			'tab'   => 'content',
+			'label' => esc_html__( 'Otwórz w builderze', 'evoke-circular-menu' ),
+			'type'  => 'checkbox',
+		];
+
+		// ----- Lokalizacja -----
+		$this->controls['locationSeparator'] = [
+			'label' => esc_html__( 'Lokalizacja', 'evoke-circular-menu' ),
+			'type'  => 'separator',
+		];
+		$this->controls['portalToBody'] = [
+			'hasDynamicData' => false,
+			'tab'    => 'content',
+			'label'  => esc_html__( 'Portal do &lt;body&gt;', 'evoke-circular-menu' ),
+			'type'   => 'checkbox',
+			'inline' => true,
+			'small'  => true,
+			'default' => true,
+			'description' => esc_html__( 'Przenosi panel menu bezpośrednio do <body>, dzięki czemu nie jest ograniczany przez overflow:hidden ani position rodziców.', 'evoke-circular-menu' ),
+		];
+		$this->controls['fromTop'] = [
+			'hasDynamicData' => false,
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Góra (punkt rozwinięcia)', 'evoke-circular-menu' ),
+			'type'        => 'number',
+			'units'       => true,
+			'inline'      => true,
+			'css'         => [
+				[
+					'property' => '--evk-cm-from-top',
+					'selector' => '.evk-cm-content',
+				],
+			],
+			'placeholder' => '24px',
+			'default'     => '24px',
+		];
+		$this->controls['fromLeft'] = [
+			'hasDynamicData' => false,
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Lewa (punkt rozwinięcia)', 'evoke-circular-menu' ),
+			'type'        => 'number',
+			'units'       => true,
+			'inline'      => true,
+			'css'         => [
+				[
+					'property' => '--evk-cm-from-left',
+					'selector' => '.evk-cm-content',
+				],
+			],
+			'placeholder' => '24px',
+			'default'     => '24px',
+		];
+
+		// ----- Custom toggle -----
+		$this->controls['toggleSeparator'] = [
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Własny przełącznik', 'evoke-circular-menu' ),
+			'type'        => 'separator',
+			'description' => esc_html__( 'Elementy z tą klasą będą otwierać/zamykać menu.', 'evoke-circular-menu' ),
+		];
+		$this->controls['customtoggle'] = [
+			'label'       => esc_html__( 'Selektor CSS', 'evoke-circular-menu' ),
+			'type'        => 'text',
+			'placeholder' => '.moj-burger',
+		];
+		$this->controls['lockBodyScrolling'] = [
+			'label'   => esc_html__( 'Blokuj scroll strony', 'evoke-circular-menu' ),
+			'type'    => 'checkbox',
+			'inline'  => true,
+			'small'   => true,
+			'default' => false,
+		];
+
+		// ----- Animacja -----
+		$this->controls['animationSeparator'] = [
+			'label' => esc_html__( 'Animacja', 'evoke-circular-menu' ),
+			'type'  => 'separator',
+		];
+		$this->controls['duration'] = [
+			'label'       => esc_html__( 'Czas trwania', 'evoke-circular-menu' ),
+			'type'        => 'number',
+			'unit'        => 's',
+			'inline'      => true,
+			'placeholder' => '0.4',
+		];
+		$this->controls['easing'] = [
+			'hasDynamicData' => false,
+			'tab'     => 'content',
+			'label'   => esc_html__( 'GSAP easing', 'evoke-circular-menu' ),
+			'type'    => 'select',
+			'options' => [
+				'none'    => 'none',
+				'power1'  => 'power1',
+				'power2'  => 'power2',
+				'power3'  => 'power3',
+				'power4'  => 'power4',
+				'back'    => 'back',
+				'bounce'  => 'bounce',
+				'circ'    => 'circ',
+				'elastic' => 'elastic',
+				'expo'    => 'expo',
+				'sine'    => 'sine',
+				'steps'   => 'steps',
+				'custom'  => 'własny',
+			],
+			'inline'      => true,
+			'placeholder' => 'none',
+		];
+		$this->controls['customEasing'] = [
+			'hasDynamicData' => false,
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Własny easing', 'evoke-circular-menu' ),
+			'type'        => 'text',
+			'inline'      => true,
+			'placeholder' => 'back.out(1.7)',
+			'default'     => 'back.out(1.7)',
+			'required'    => [ 'easing', '=', 'custom' ],
+		];
+
+		// ----- Styl zawartości -----
+		$this->controls['contentseparator'] = [
+			'label'       => esc_html__( 'Styl zawartości', 'evoke-circular-menu' ),
+			'description' => esc_html__( 'Możesz też edytować style bezpośrednio na elemencie Zawartość menu.', 'evoke-circular-menu' ),
+			'type'        => 'separator',
+		];
+		$this->controls['width'] = [
+			'hasDynamicData' => false,
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Szerokość', 'evoke-circular-menu' ),
+			'type'        => 'number',
+			'units'       => true,
+			'inline'      => true,
+			'css'         => [
+				[
+					'property' => 'width',
+					'selector' => '.evk-cm-content',
+				],
+			],
+			'placeholder' => '100svw',
+			'default'     => '100svw',
+		];
+		$this->controls['height'] = [
+			'hasDynamicData' => false,
+			'tab'         => 'content',
+			'label'       => esc_html__( 'Wysokość', 'evoke-circular-menu' ),
+			'type'        => 'number',
+			'units'       => true,
+			'inline'      => true,
+			'css'         => [
+				[
+					'property' => 'height',
+					'selector' => '.evk-cm-content',
+				],
+			],
+			'placeholder' => '100svh',
+			'default'     => '100svh',
+		];
+		$this->controls['background'] = [
+			'hasDynamicData' => false,
+			'tab'   => 'content',
+			'label' => esc_html__( 'Tło', 'evoke-circular-menu' ),
+			'type'  => 'background',
+			'units' => true,
+			'css'   => [
+				[
+					'property' => 'background',
+					'selector' => '.evk-cm-content',
+				],
+			],
+			'default' => [
+				'color' => [ 'hex' => '#c4c4c4' ],
+			],
+		];
+
+		// ----- Dostępność -----
+		$this->controls['accessibilitySeparator'] = [
+			'label' => esc_html__( 'Dostępność', 'evoke-circular-menu' ),
+			'type'  => 'separator',
+		];
+		$this->controls['closeOnEsc'] = [
+			'label'   => esc_html__( 'Zamknij klawiszem ESC', 'evoke-circular-menu' ),
+			'type'    => 'checkbox',
+			'inline'  => true,
+			'small'   => true,
+			'default' => true,
+		];
+	}
+
+	public function enqueue_scripts() {
+		wp_enqueue_script( 'evk-gsap' ); // wspólny handle Evoke ONE (dedup)
+		wp_enqueue_script(
+			'evk_circular_menu',
+			plugin_dir_url( __FILE__ ) . 'js/evk-circular-menu.js',
+			[ 'evk-gsap', 'bricks-scripts' ],
+			EVK_CIRCULAR_MENU_VERSION,
+			true
+		);
+		wp_enqueue_style(
+			'evk-circular-menu',
+			plugin_dir_url( __FILE__ ) . 'evk-circular-menu.css',
+			[],
+			EVK_CIRCULAR_MENU_VERSION
+		);
+	}
+
+	public function render() {
+		$settings = $this->settings;
+
+		$openbuilder       = ! empty( $settings['openbuilder'] )       ? $settings['openbuilder']       : 0;
+		$portalToBody      = ! empty( $settings['portalToBody'] )      ? '1' : '0';
+		$duration          = ! empty( $settings['duration'] )          ? $settings['duration']          : '0.4';
+		$easing            = ! empty( $settings['easing'] )            ? $settings['easing']            : 'none';
+		if ( $easing === 'custom' ) {
+			$easing = ! empty( $settings['customEasing'] ) ? $settings['customEasing'] : 'none';
+		}
+		$customtoggle      = ! empty( $settings['customtoggle'] )      ? $settings['customtoggle']      : '';
+		$lockBodyScrolling = ! empty( $settings['lockBodyScrolling'] ) ? '1' : '0';
+		$closeOnEsc        = ! empty( $settings['closeOnEsc'] )        ? '1' : '0';
+
+		$this->set_attribute( '_root', 'class',                                 'evk-cm' );
+		$this->set_attribute( '_root', 'data-portal',                           $portalToBody );
+		$this->set_attribute( '_root', 'data-duration',                         $duration );
+		$this->set_attribute( '_root', 'data-easing',                           $easing );
+		$this->set_attribute( '_root', 'data-customtoggle',                     $customtoggle );
+		$this->set_attribute( '_root', 'data-lock-scroll',                      $lockBodyScrolling );
+		$this->set_attribute( '_root', 'data-open-builder',                     $openbuilder );
+		$this->set_attribute( '_root', 'data-close-on-esc',                     $closeOnEsc );
+
+		$output  = "<div {$this->render_attributes( '_root' )}>";
+		$output .= Frontend::render_children( $this );
+		$output .= "</div>";
+
+		echo $output;
+	}
+}

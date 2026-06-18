@@ -1,0 +1,17 @@
+.evk-scroll-reading {
+  /* kontener — nie ingeruj w flow */
+}
+
+.evk-sr-text {
+  /* słowa/znaki będą inline, zachowaj naturalny flow tekstu */
+}
+
+/* SplitText tworzy div-y dla lines — spraw żeby zachowywały się jak inline */
+.evk-sr-line {
+  display: block;
+}
+
+.evk-sr-word,
+.evk-sr-char {
+  display: inline-block;
+}
