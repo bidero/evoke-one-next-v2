@@ -227,16 +227,16 @@ function evk_nl_handle_unsub(string $token): void {
 }
 
 function evk_nl_unsubscribe_html(bool $success, string $email): string {
-    $icon  = $success ? '✅' : '❌';
-    $title = $success ? 'Wypisano z newslettera' : 'Nieprawidłowy link';
-
-    if ($success && $email) {
-        $msg = 'Adres <strong>' . esc_html($email) . '</strong> został wypisany z naszego newslettera.';
-    } elseif ($success) {
-        $msg = 'Zostałeś wypisany z naszego newslettera.';
+    $icon = $success ? '✅' : '❌';
+    $em   = $email !== '' ? '<strong>' . $email . '</strong>' : 'Twój adres';
+    if ($success) {
+        $title = evk_nl_text('unsub_ok_title');
+        $msg   = evk_nl_text('unsub_ok_msg', ['email' => $em]);
     } else {
-        $msg = 'Link jest nieprawidłowy lub już wygasł.';
+        $title = evk_nl_text('unsub_bad_title');
+        $msg   = evk_nl_text('unsub_bad_msg', ['email' => $em]);
     }
+    $title = esc_html($title);
 
     $home      = esc_url(home_url());
     $site_name = esc_html(get_bloginfo('name'));
@@ -452,24 +452,27 @@ function evk_nl_handle_confirm(string $token): void {
 }
 
 function evk_nl_confirm_html(bool $ok, string $email): string {
-    $icon  = $ok ? '✅' : '❌';
-    $title = $ok ? 'Zapis potwierdzony' : 'Nieprawidłowy link';
-    if ($ok && $email) {
-        $msg = 'Adres <strong>' . $email . '</strong> został potwierdzony. Dziękujemy!';
-    } elseif ($ok) {
-        $msg = 'Twój zapis został potwierdzony. Dziękujemy!';
+    $icon = $ok ? '✅' : '❌';
+    $em   = $email !== '' ? '<strong>' . $email . '</strong>' : 'Twój adres';
+    if ($ok) {
+        $title = evk_nl_text('confirm_ok_title');
+        $msg   = evk_nl_text('confirm_ok_msg', ['email' => $em]);
     } else {
-        $msg = 'Link jest nieprawidłowy lub wygasł.';
+        $title = evk_nl_text('confirm_bad_title');
+        $msg   = evk_nl_text('confirm_bad_msg', ['email' => $em]);
     }
     $home = esc_url(home_url());
     $site = esc_html(get_bloginfo('name'));
-    return evk_nl_status_page($icon, $title, $msg, $home, $site);
+    return evk_nl_status_page($icon, esc_html($title), $msg, $home, $site);
 }
 
 function evk_nl_unsub_confirm_html(string $email, string $action_url): string {
     $home = esc_url(home_url());
     $site = esc_html(get_bloginfo('name'));
-    $who  = $email ? 'adresu <strong>' . $email . '</strong>' : 'tego adresu';
+    $em    = $email ? '<strong>' . $email . '</strong>' : 'tego adresu';
+    $title = esc_html(evk_nl_text('unsub_confirm_title'));
+    $msg   = evk_nl_text('unsub_confirm_msg', ['email' => $em]);
+    $btn   = esc_html(evk_nl_text('unsub_confirm_btn'));
     return <<<HTML
 <!DOCTYPE html>
 <html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -488,9 +491,9 @@ p{color:#64748b;font-size:15px;line-height:1.7;margin:0 0 28px;}strong{color:#1e
 </style></head>
 <body><div class="card">
 <div class="icon">✉️</div>
-<h1>Wypisać z newslettera?</h1>
-<p>Czy na pewno chcesz wypisać {$who} z naszego newslettera?</p>
-<form method="post" action="{$action_url}"><button type="submit" class="btn">Tak, wypisz mnie</button></form>
+<h1>{$title}</h1>
+<p>{$msg}</p>
+<form method="post" action="{$action_url}"><button type="submit" class="btn">{$btn}</button></form>
 <a class="link" href="{$home}">Nie, wróć na stronę</a>
 <div class="footer">{$site}</div>
 </div></body></html>

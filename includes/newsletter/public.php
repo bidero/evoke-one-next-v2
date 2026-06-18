@@ -24,6 +24,10 @@ function evk_nl_subscribe_shortcode($atts): string {
         'consent'     => '',
         'confirm'     => '1',
         'success'     => '',
+        'class'        => '',
+        'input_class'  => '',
+        'button_class' => '',
+        'styles'       => '',
     ], $atts, 'evk_newsletter_form');
 
     $list_id = (int) $a['list'];
@@ -37,30 +41,38 @@ function evk_nl_subscribe_shortcode($atts): string {
     $consent = trim($a['consent']);
     $confirm = ($a['confirm'] === '1') ? '1' : '0';
 
+    $ap          = evk_nl_appearance();
+    $use_styles  = ($a['styles'] === '0') ? false : $ap['default_styles'];
+    $wrap_cls    = trim('evk-nl-widget ' . $ap['wrap'] . ' ' . evk_nl_sanitize_classes($a['class']));
+    $input_cls   = trim('evk-nl-email ' . $ap['input'] . ' ' . evk_nl_sanitize_classes($a['input_class']));
+    $btn_cls     = trim('evk-nl-btn ' . $ap['button'] . ' ' . evk_nl_sanitize_classes($a['button_class']));
+    $consent_cls = trim('evk-nl-consent ' . $ap['consent']);
+
     if ($a['success'] !== '') {
         $success = $a['success'];
     } elseif ($confirm === '1') {
-        $success = 'Sprawdź skrzynkę i potwierdź zapis klikając w link w wiadomości.';
+        $success = evk_nl_text('form_pending');
     } else {
-        $success = 'Dziękujemy za zapis!';
+        $success = evk_nl_text('form_success');
     }
 
     $consent_html = '';
     if ($consent !== '') {
-        $consent_html = '<label class="evk-nl-consent"><input type="checkbox" class="evk-nl-ok"> <span>' . esc_html($consent) . '</span></label>';
+        $consent_html = '<label class="' . esc_attr($consent_cls) . '"><input type="checkbox" class="evk-nl-ok"> <span>' . esc_html($consent) . '</span></label>';
     }
 
     ob_start();
     ?>
-<div class="evk-nl-widget" id="<?php echo esc_attr($uid); ?>">
+<div class="<?php echo esc_attr($wrap_cls); ?>" id="<?php echo esc_attr($uid); ?>">
     <div class="evk-nl-row">
-        <input type="email" class="evk-nl-email" placeholder="<?php echo esc_attr($a['placeholder']); ?>" autocomplete="email">
-        <button type="button" class="evk-nl-btn"><?php echo esc_html($a['button']); ?></button>
+        <input type="email" class="<?php echo esc_attr($input_cls); ?>" placeholder="<?php echo esc_attr($a['placeholder']); ?>" autocomplete="email">
+        <button type="button" class="<?php echo esc_attr($btn_cls); ?>"><?php echo esc_html($a['button']); ?></button>
     </div>
     <?php echo $consent_html; ?>
     <input type="text" class="evk-nl-hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
     <div class="evk-nl-msg" role="status" aria-live="polite"></div>
 </div>
+<?php if ($use_styles): ?>
 <style>
 #<?php echo $uid; ?>{max-width:480px;font-family:inherit;}
 #<?php echo $uid; ?> .evk-nl-row{display:flex;gap:8px;flex-wrap:wrap;}
@@ -74,6 +86,7 @@ function evk_nl_subscribe_shortcode($atts): string {
 #<?php echo $uid; ?> .evk-nl-msg.ok{display:block;color:#16a34a;}
 #<?php echo $uid; ?> .evk-nl-msg.err{display:block;color:#dc2626;}
 </style>
+<?php endif; ?>
 <script>
 (function(){
     var w=document.getElementById(<?php echo wp_json_encode($uid); ?>);
@@ -126,7 +139,7 @@ function evk_nl_handle_public_subscribe(): void {
     if (empty($opts['enabled'])) wp_send_json_error(['msg' => 'Zapisy są wyłączone.']);
 
     // Honeypot — bot wypełnił ukryte pole → udajemy sukces, nic nie zapisujemy
-    if (!empty($_POST['evk_nl_hp'])) wp_send_json_success(['msg' => 'Dziękujemy za zapis!']);
+    if (!empty($_POST['evk_nl_hp'])) wp_send_json_success(['msg' => evk_nl_text('form_success')]);
 
     $list_id         = (int) ($_POST['list'] ?? 0);
     $email           = sanitize_email(wp_unslash($_POST['email'] ?? ''));
@@ -158,16 +171,16 @@ function evk_nl_handle_public_subscribe(): void {
         if ((int) ($res['status'] ?? 0) === 2 && !empty($res['token'])) {
             $list = evk_nl_get_list($list_id);
             evk_nl_send_confirm_email($email, $res['token'], $list['name'] ?? '');
-            wp_send_json_success(['msg' => 'Sprawdź skrzynkę i potwierdź zapis klikając w link.']);
+            wp_send_json_success(['msg' => evk_nl_text('form_pending')]);
         }
         // Już aktywny
-        wp_send_json_success(['msg' => 'Ten adres jest już zapisany.']);
+        wp_send_json_success(['msg' => evk_nl_text('form_already')]);
     }
 
     // Bez double opt-in — zapis natychmiastowy
     $consent['_confirmed_at'] = current_time('mysql');
     $id = evk_nl_add_subscriber($list_id, $email, $consent);
-    $id ? wp_send_json_success(['msg' => 'Dziękujemy za zapis!'])
+    $id ? wp_send_json_success(['msg' => evk_nl_text('form_success')])
         : wp_send_json_error(['msg' => 'Nie udało się zapisać.']);
 }
 

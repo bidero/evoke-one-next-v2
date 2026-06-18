@@ -63,6 +63,7 @@ function evk_nl_phpmailer_send(array $args) {
 
     try {
         $mailer->isSMTP();
+        $mailer->XMailer = ' '; // nie ujawniaj biblioteki (jak Gmail)
         $mailer->Host       = $smtp['host'];
         $mailer->SMTPAuth   = true;
         $mailer->Port       = (int) $smtp['port'];

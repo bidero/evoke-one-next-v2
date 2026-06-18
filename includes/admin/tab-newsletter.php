@@ -15,6 +15,7 @@ $subtabs = [
     'templates' => ['label' => 'Szablony', 'icon' => 'dashicons-email-alt'],
     'campaigns' => ['label' => 'Kampanie', 'icon' => 'dashicons-megaphone'],
     'reports'   => ['label' => 'Raporty', 'icon' => 'dashicons-chart-bar'],
+    'settings'  => ['label' => 'Ustawienia', 'icon' => 'dashicons-admin-generic'],
 ];
 
 if (!array_key_exists($subtab, $subtabs)) $subtab = 'lists';

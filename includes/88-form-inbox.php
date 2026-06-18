@@ -23,6 +23,7 @@ function evk_inbox_defaults(): array {
         'menu_label'    => 'Wiadomości',
         'menu_icon'     => 'dashicons-email-alt',
         'menu_position' => 25,
+        'menu_badge'    => 1,
         'per_page'      => 25,
         'field_labels'  => [],   // ['form-field-abc' => 'Imię']
         'hidden_fields' => [],   // ['form-field-xyz']
@@ -51,6 +52,24 @@ function evk_inbox_table_exists(): bool {
     return (bool) $wpdb->get_var("SHOW TABLES LIKE '" . evk_inbox_table() . "'");
 }
 
+/** Liczba nieprzeczytanych wiadomosci (cache 60s). */
+function evk_inbox_unread_count(): int {
+    $cached = get_transient('evk_inbox_unread');
+    if ($cached !== false) return (int) $cached;
+    if (!evk_inbox_table_exists()) return 0;
+    global $wpdb;
+    $t    = evk_inbox_table();
+    $read = evk_inbox_get_read();
+    if (empty($read)) {
+        $n = (int) $wpdb->get_var("SELECT COUNT(*) FROM $t");
+    } else {
+        $ph = implode(',', array_fill(0, count($read), '%d'));
+        $n  = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $t WHERE id NOT IN ($ph)", $read));
+    }
+    set_transient('evk_inbox_unread', $n, 60);
+    return $n;
+}
+
 // =========================================================================
 // REJESTRACJA USTAWIEŃ
 // =========================================================================
@@ -68,6 +87,7 @@ function evk_inbox_sanitize_settings($input): array {
     $c['menu_label']    = sanitize_text_field($input['menu_label']    ?? $d['menu_label'])    ?: $d['menu_label'];
     $c['menu_icon']     = sanitize_text_field($input['menu_icon']     ?? $d['menu_icon'])     ?: $d['menu_icon'];
     $c['menu_position'] = max(1, min(100, intval($input['menu_position'] ?? 25)));
+    $c['menu_badge']    = !empty($input['menu_badge']) ? 1 : 0;
     $c['per_page']      = max(5, min(100, intval($input['per_page']   ?? 25)));
     $c['email_field']      = sanitize_key($input['email_field'] ?? '');
     $c['message_template'] = sanitize_textarea_field($input['message_template'] ?? '');
@@ -133,9 +153,17 @@ add_action('admin_menu', function () {
     $s = evk_inbox_get_settings();
     if (empty($s['enabled'])) return;
 
+    $menu_title = $s['menu_label'];
+    if (!empty($s['menu_badge'])) {
+        $n = evk_inbox_unread_count();
+        if ($n > 0) {
+            $menu_title .= ' <span class="awaiting-mod"><span class="pending-count">' . (int) $n . '</span></span>';
+        }
+    }
+
     add_menu_page(
         $s['menu_label'],
-        $s['menu_label'],
+        $menu_title,
         'evk_access_messages',
         'evk-form-inbox',
         'evk_inbox_render_page',
@@ -169,6 +197,7 @@ function evk_inbox_mark_read(array $ids): void {
     $read = array_values(array_unique(array_merge($read, array_map('intval', $ids))));
     if (count($read) > 10000) $read = array_slice($read, -10000);
     update_option(EVK_INBOX_READ_OPTION, $read, false);
+    delete_transient('evk_inbox_unread');
 }
 
 function evk_inbox_mark_unread(array $ids): void {
@@ -176,6 +205,7 @@ function evk_inbox_mark_unread(array $ids): void {
     $ids  = array_map('intval', $ids);
     $read = array_values(array_diff($read, $ids));
     update_option(EVK_INBOX_READ_OPTION, $read, false);
+    delete_transient('evk_inbox_unread');
 }
 
 function evk_inbox_format_date(string $dt): string {

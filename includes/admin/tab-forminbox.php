@@ -75,6 +75,13 @@ $inbox_url = admin_url('admin.php?page=evk-form-inbox');
             <input type="number" name="evk_forminbox[per_page]" value="<?php echo esc_attr($fi['per_page']); ?>" min="5" max="100" style="max-width:80px;">
         </div>
         <div class="evo-field" style="margin:0;">
+            <label>Plakietka w menu</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" name="evk_forminbox[menu_badge]" value="1" <?php checked(!empty($fi['menu_badge'])); ?>>
+                <span>Pokaż licznik nieprzeczytanych przy pozycji menu</span>
+            </label>
+        </div>
+        <div class="evo-field" style="margin:0;">
             <label>Klucz pola e-mail</label>
             <input type="text" name="evk_forminbox[email_field]" value="<?php echo esc_attr($fi['email_field']); ?>" placeholder="np. 436dec" style="max-width:160px;">
             <div class="evo-desc">Auto-detect jeśli puste.</div>
