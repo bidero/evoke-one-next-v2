@@ -1,21 +1,20 @@
 <?php
 if (!defined('ABSPATH')) exit;
 /**
- * Evoke ONE — Bezpieczeństwo / czyszczenie (port pomysłów SNN jako evk)
+ * Evoke ONE — Czyszczenie (XML-RPC / RSS). Osobna opcja evk_cleanup,
+ * niezależna od systemu evk_security (Limit logowań / REST / Ochrona WP).
  */
 
-function evk_security_opts(): array {
-    return array_merge(['disable_xmlrpc' => 0, 'remove_rss' => 0], (array) get_option('evk_security', []));
+function evk_cleanup_opts(): array {
+    return array_merge(['disable_xmlrpc' => 0, 'remove_rss' => 0], (array) get_option('evk_cleanup', []));
 }
 
-// Wyłącz XML-RPC
 add_filter('xmlrpc_enabled', function ($enabled) {
-    return !empty(evk_security_opts()['disable_xmlrpc']) ? false : $enabled;
+    return !empty(evk_cleanup_opts()['disable_xmlrpc']) ? false : $enabled;
 });
 
-// Usuń linki feedów RSS z <head>
 add_action('init', function () {
-    if (empty(evk_security_opts()['remove_rss'])) return;
+    if (empty(evk_cleanup_opts()['remove_rss'])) return;
     remove_action('wp_head', 'rsd_link');
     remove_action('wp_head', 'feed_links', 2);
     remove_action('wp_head', 'feed_links_extra', 3);
