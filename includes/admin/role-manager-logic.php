@@ -16,7 +16,7 @@ define('EVK_ROLE_RESTRICTIONS_OPTION', 'evk_role_restrictions');
 add_filter('user_has_cap', function (array $caps, array $cap_check, array $args) {
     if (empty($cap_check)) return $caps;
     $cap = $cap_check[0];
-    if (!in_array($cap, ['evk_access_translations', 'evk_access_newsletter', 'evk_access_messages'], true)) return $caps;
+    if (!in_array($cap, ['evk_access_translations', 'evk_access_newsletter', 'evk_access_messages', 'evk_access_maintenance'], true)) return $caps;
     if (!empty($caps['manage_options'])) {
         $caps[$cap] = true;
     }
@@ -34,6 +34,9 @@ add_action('init', function () {
     }
     if ($admin_role && !$admin_role->has_cap('evk_access_messages')) {
         $admin_role->add_cap('evk_access_messages', true);
+    }
+    if ($admin_role && !$admin_role->has_cap('evk_access_maintenance')) {
+        $admin_role->add_cap('evk_access_maintenance', true);
     }
     // Nadaj manage_evk_roles administratorowi
     if ($admin_role && !$admin_role->has_cap('manage_evk_roles')) {
@@ -141,6 +144,13 @@ add_action('admin_init', function () {
             $role->add_cap('evk_access_messages', true);
         } else {
             $role->remove_cap('evk_access_messages');
+        }
+
+        // Dostęp do Evoke ONE — Tryb konserwacji (przełącznik w pasku admina)
+        if (!empty($_POST['evk_maint_access'])) {
+            $role->add_cap('evk_access_maintenance', true);
+        } else {
+            $role->remove_cap('evk_access_maintenance');
         }
 
         // Ograniczenia stron

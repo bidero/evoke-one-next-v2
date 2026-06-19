@@ -22,7 +22,7 @@ add_action('admin_init', function () {
 // =========================================================================
 
 add_action('admin_bar_menu', function ($wp_admin_bar) {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('manage_options') && !current_user_can('evk_access_maintenance')) return;
 
     $status     = (int) get_option('maintenance_mode', 0);
     $bg_color   = $status === 1 ? '#6e00a5' : '#72777c';
@@ -59,7 +59,7 @@ add_action('admin_enqueue_scripts', 'evoke_one_maintenance_bar_js');
 add_action('wp_enqueue_scripts',    'evoke_one_maintenance_bar_js');
 
 function evoke_one_maintenance_bar_js(): void {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('manage_options') && !current_user_can('evk_access_maintenance')) return;
     ?>
     <script>
     function toggleMaintenanceMode(e){
@@ -84,7 +84,7 @@ function evoke_one_maintenance_bar_js(): void {
 
 add_action('wp_ajax_toggle_maintenance_status', function () {
     check_ajax_referer('maintenance_bar_nonce', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error();
+    if (!current_user_can('manage_options') && !current_user_can('evk_access_maintenance')) wp_send_json_error();
     update_option('maintenance_mode', (int) get_option('maintenance_mode', 0) === 1 ? 0 : 1);
     wp_send_json_success();
 });

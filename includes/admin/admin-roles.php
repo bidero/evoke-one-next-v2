@@ -86,6 +86,14 @@ if ($action === 'edit' && $edit_role && $edit_role !== 'administrator' && isset(
                     <div class="evo-desc" style="margin-top:2px;">Rola może otwierać i czytać skrzynkę wiadomości z formularzy.</div>
                 </div>
             </label>
+            <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;">
+                <input type="checkbox" name="evk_maint_access" value="1"
+                       <?php checked($role->has_cap('evk_access_maintenance')); ?>>
+                <div>
+                    <span style="font-weight:500;">Tryb konserwacji</span>
+                    <div class="evo-desc" style="margin-top:2px;">Rola może włączać i wyłączać tryb konserwacji z paska administratora.</div>
+                </div>
+            </label>
         </div>
 
         <div class="evo-save-bar"><?php submit_button('Zapisz rolę', 'primary', 'submit', false); ?></div>
