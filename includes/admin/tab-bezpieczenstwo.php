@@ -1,86 +1,30 @@
 <?php
 if (!defined('ABSPATH')) exit;
-/**
- * Evoke ONE — Zakładka: Bezpieczeństwo
- */
 
-$sub      = sanitize_key($_GET['sub'] ?? 'login');
-$base_url = add_query_arg('tab', 'bezpieczenstwo', admin_url('options-general.php?page=evoke-one'));
-
-$subs = [
-    'login'     => ['label' => 'Limit logowań', 'icon' => 'dashicons-lock'],
-    'rest'      => ['label' => 'REST API',       'icon' => 'dashicons-rest-api'],
-    'hardening' => ['label' => 'Ochrona WP',     'icon' => 'dashicons-shield-alt'],
+$o = evk_security_opts();
+$items = [
+    'disable_xmlrpc' => ['label' => 'Wyłącz XML-RPC', 'desc' => 'Blokuje xmlrpc.php — częsty wektor brute-force i nadużyć pingback.', 'icon' => 'dashicons-shield'],
+    'remove_rss'     => ['label' => 'Usuń linki RSS z <head>', 'desc' => 'Usuwa odnośniki feedów (rsd, feed_links, wlwmanifest) z kodu strony.', 'icon' => 'dashicons-rss'],
 ];
-
-if (!array_key_exists($sub, $subs)) $sub = 'login';
-
-evoke_one_render_subtabs($subs, $sub, $base_url);
-
-$evk_sec   = evk_security_get();
-$sec_nonce = wp_create_nonce('evk_security_nonce');
-
-$sub_file = EVOKE_ONE_DIR . 'includes/admin/security-' . $sub . '.php';
-if (file_exists($sub_file)) {
-    require $sub_file;
-}
-
-// Globalny JS dla AJAX save — po załadowaniu subtaba
 ?>
-<script>
-jQuery(function($) {
-    var nonce = '<?php echo esc_js(wp_create_nonce('evk_security_nonce')); ?>';
-
-    $('form[data-section]').on('submit', function(e) {
-        e.preventDefault();
-        var form    = $(this);
-        var section = form.data('section');
-        var btn     = form.find('button[type=submit]');
-        var saved   = form.find('.evk-sec-saved');
-
-        btn.prop('disabled', true).text('Zapisuję...');
-
-        var data = {
-            action: 'evk_save_security_section',
-            nonce:   nonce,
-            section: section,
-            data:    {}
-        };
-
-        // Checkboxy niezaznaczone = 0 (domyślnie pomijane przez serialize)
-        form.find('input[type=checkbox]').each(function() {
-            var name = $(this).attr('name') || '';
-            var m = name.match(/\[([^\]]+)\](\[\])?$/);
-            if (!m) return;
-            var key = m[1];
-            if (m[2]) {
-                if (!data.data[key]) data.data[key] = [];
-                if ($(this).is(':checked')) data.data[key].push($(this).val());
-            } else {
-                if (!data.data[key]) data.data[key] = 0;
-                if ($(this).is(':checked')) data.data[key] = 1;
-            }
-        });
-
-        // Pola tekstowe, number, textarea
-        form.find('input:not([type=checkbox]):not([type=submit]):not([type=button]), textarea, select').each(function() {
-            var name = $(this).attr('name') || '';
-            var m = name.match(/\[([^\]]+)\]$/);
-            if (!m) return;
-            data.data[m[1]] = $(this).val();
-        });
-
-        $.post(ajaxurl, data, function(res) {
-            btn.prop('disabled', false).text('Zapisz');
-            if (res.success) {
-                saved.stop(true).show().delay(2500).fadeOut();
-            } else {
-                alert(res.data || 'Błąd zapisu.');
-            }
-        }).fail(function() {
-            btn.prop('disabled', false).text('Zapisz');
-            alert('Błąd połączenia.');
-        });
-    });
-});
-</script>
+<div class="evo-tab-content">
+    <p class="evo-section-title">Bezpieczeństwo / czyszczenie</p>
+    <?php foreach ($items as $key => $it): $on = !empty($o[$key]); ?>
+    <div class="evo-status-card" style="margin-bottom:12px;">
+        <div class="evo-status-icon <?php echo $on ? 'on' : 'off'; ?>">
+            <span class="dashicons <?php echo esc_attr($it['icon']); ?>"></span>
+        </div>
+        <div class="evo-status-text">
+            <h3><?php echo esc_html($it['label']); ?>: <?php echo $on ? 'WŁĄCZONE' : 'WYŁĄCZONE'; ?></h3>
+            <p><?php echo esc_html($it['desc']); ?></p>
+        </div>
+        <div class="evo-status-actions">
+            <span class="evo-toggle-label"><?php echo $on ? 'Włączone' : 'Wyłączone'; ?></span>
+            <label class="evo-toggle">
+                <input type="checkbox" data-option="evk_security" data-field="<?php echo esc_attr($key); ?>" value="1" <?php checked($on); ?>>
+                <span class="evo-slider"></span>
+            </label>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
