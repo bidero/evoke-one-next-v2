@@ -226,7 +226,6 @@ if ($campaign_id) {
         <?php endif; ?>
     </div>
 </div>
-?>
 
 <script>
 jQuery(function($) {

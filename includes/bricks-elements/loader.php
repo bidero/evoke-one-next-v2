@@ -57,7 +57,7 @@ function evk_elements_registry(): array {
                 'EVK_SR_URL'     => $url . 'evoke-scroll-reading/',
                 'EVK_SR_PATH'    => $dir . 'evoke-scroll-reading/',
             ],
-            'script'=> ['evk-scroll-reading', $url . 'evoke-scroll-reading/assets/scroll-reading.js', ['evk-gsap', 'evk-scrolltrigger'], '1.0.1'],
+            'script'=> ['evk-scroll-reading', $url . 'evoke-scroll-reading/assets/scroll-reading.js', ['evk-gsap', 'evk-scrolltrigger', 'evk-splittext'], '1.0.1'],
             'style' => ['evk-scroll-reading', $url . 'evoke-scroll-reading/assets/scroll-reading.css', '1.0.1'],
         ],
         'circular_title' => [
@@ -142,9 +142,10 @@ add_action('wp_enqueue_scripts', function (): void {
 
     // Wspólne biblioteki — jeden handle, brak duplikatów między elementami.
     // (Rejestracja jest tania; faktyczne pobranie tylko gdy element ich użyje.)
-    wp_register_script('evk-gsap', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js', [], '3.12.5', true);
-    wp_register_script('evk-scrolltrigger', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js', ['evk-gsap'], '3.12.5', true);
-    wp_register_script('evk-observer', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Observer.min.js', ['evk-gsap'], '3.12.5', true);
+    wp_register_script('evk-gsap', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js', [], '3.13.0', true);
+    wp_register_script('evk-scrolltrigger', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js', ['evk-gsap'], '3.13.0', true);
+    wp_register_script('evk-observer', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/Observer.min.js', ['evk-gsap'], '3.13.0', true);
+    wp_register_script('evk-splittext', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js', ['evk-gsap'], '3.13.0', true);
 
     // Handle skryptów/stylów, których oczekuje element->enqueue_scripts()
     $reg    = evk_elements_registry();
