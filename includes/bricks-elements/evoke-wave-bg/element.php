@@ -341,7 +341,8 @@ class Evk_Wave_Bg_Element extends \Bricks\Element {
 			}
 			$gradient = 'linear-gradient(to bottom,' . implode( ',', $stops ) . ')';
 			$mask_css = "-webkit-mask-image:{$gradient};mask-image:{$gradient};";
-		} = [ '#F2E6DB', '#71D9E9', '#8c3dd0', '#D03F83', '#F43FF9', '#8c3dd0' ];
+		}
+		$color_defaults = [ '#F2E6DB', '#71D9E9', '#8c3dd0', '#D03F83', '#F43FF9', '#8c3dd0' ];
 		$colors = [];
 		for ( $i = 1; $i <= 6; $i++ ) {
 			$colors[] = $this->color_hex( $s[ 'color_' . $i ] ?? null, $color_defaults[ $i - 1 ] );
